@@ -1,0 +1,7681 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "Ping",
+  "description": "Ping runs AI support bots for websites. Memora retrieves the passages (retrieval only); Ping reasons over them and writes every answer through the VizhiOps LLM gateway.",
+  "version": "0.1.0"
+ },
+ "paths": {
+  "/api/v1/auth/google": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Google Login",
+    "description": "Sign in with a Google ID token. The first sign-in creates the account\nand its organization.",
+    "operationId": "google_login_api_v1_auth_google_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/GoogleLoginRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AuthResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/me": {
+   "get": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Me",
+    "operationId": "me_api_v1_auth_me_get",
+    "parameters": [
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UserRead"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/logout": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Logout",
+    "description": "Drop the cookie. There is no server-side session: the JWT stays valid\nuntil it expires for anyone holding a copy.",
+    "operationId": "logout_api_v1_auth_logout_post",
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     }
+    }
+   }
+  },
+  "/api/v1/orgs": {
+   "get": {
+    "tags": [
+     "organizations"
+    ],
+    "summary": "List Orgs",
+    "operationId": "list_orgs_api_v1_orgs_get",
+    "parameters": [
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/OrganizationRead"
+         },
+         "title": "Response List Orgs Api V1 Orgs Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/orgs/{org_id}": {
+   "get": {
+    "tags": [
+     "organizations"
+    ],
+    "summary": "Get Org",
+    "operationId": "get_org_api_v1_orgs__org_id__get",
+    "parameters": [
+     {
+      "name": "org_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Org Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OrganizationRead"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "patch": {
+    "tags": [
+     "organizations"
+    ],
+    "summary": "Update Org",
+    "operationId": "update_org_api_v1_orgs__org_id__patch",
+    "parameters": [
+     {
+      "name": "org_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Org Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/OrganizationUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OrganizationRead"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/orgs/{org_id}/bots": {
+   "get": {
+    "tags": [
+     "organizations"
+    ],
+    "summary": "List Bots",
+    "operationId": "list_bots_api_v1_orgs__org_id__bots_get",
+    "parameters": [
+     {
+      "name": "org_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Org Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/BotSummary"
+         },
+         "title": "Response List Bots Api V1 Orgs  Org Id  Bots Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "organizations"
+    ],
+    "summary": "Create Bot",
+    "description": "Create a bot (status `draft`). With `sitemap_url`, crawling starts in\nthe background straight away.",
+    "operationId": "create_bot_api_v1_orgs__org_id__bots_post",
+    "parameters": [
+     {
+      "name": "org_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Org Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BotCreate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BotDetail"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}": {
+   "get": {
+    "tags": [
+     "bots"
+    ],
+    "summary": "Get Bot",
+    "operationId": "get_bot_api_v1_bots__bot_id__get",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BotDetail"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "patch": {
+    "tags": [
+     "bots"
+    ],
+    "summary": "Update Bot",
+    "operationId": "update_bot_api_v1_bots__bot_id__patch",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BotUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BotDetail"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "bots"
+    ],
+    "summary": "Delete Bot",
+    "description": "Delete the bot, its conversations, and its knowledge in Memora.",
+    "operationId": "delete_bot_api_v1_bots__bot_id__delete",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/appearance": {
+   "get": {
+    "tags": [
+     "bots"
+    ],
+    "summary": "Get Appearance",
+    "operationId": "get_appearance_api_v1_bots__bot_id__appearance_get",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/WidgetAppearance"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "bots"
+    ],
+    "summary": "Put Appearance",
+    "operationId": "put_appearance_api_v1_bots__bot_id__appearance_put",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/WidgetAppearance"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/WidgetAppearance"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/overview": {
+   "get": {
+    "tags": [
+     "bots"
+    ],
+    "summary": "Overview",
+    "operationId": "overview_api_v1_bots__bot_id__overview_get",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "range",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "24h",
+        "7d",
+        "30d",
+        "90d"
+       ],
+       "type": "string",
+       "default": "30d",
+       "title": "Range"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Overview"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/install": {
+   "get": {
+    "tags": [
+     "bots"
+    ],
+    "summary": "Install",
+    "description": "The embed snippet plus whether the widget has been seen on a domain.",
+    "operationId": "install_api_v1_bots__bot_id__install_get",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/InstallInfo"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/sources": {
+   "get": {
+    "tags": [
+     "knowledge"
+    ],
+    "summary": "List Sources",
+    "description": "Every top-level source, with indexing progress pulled from Memora.",
+    "operationId": "list_sources_api_v1_bots__bot_id__sources_get",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SourceList"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/sources/upload": {
+   "post": {
+    "tags": [
+     "knowledge"
+    ],
+    "summary": "Upload",
+    "operationId": "upload_api_v1_bots__bot_id__sources_upload_post",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_upload_api_v1_bots__bot_id__sources_upload_post"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SourceRead"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/sources/url": {
+   "post": {
+    "tags": [
+     "knowledge"
+    ],
+    "summary": "Add Url",
+    "description": "Add a page or a sitemap. Fetching happens in the background; poll the\nlist for progress.",
+    "operationId": "add_url_api_v1_bots__bot_id__sources_url_post",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/UrlSourceCreate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SourceRead"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/sources/{source_id}/resync": {
+   "post": {
+    "tags": [
+     "knowledge"
+    ],
+    "summary": "Resync",
+    "operationId": "resync_api_v1_bots__bot_id__sources__source_id__resync_post",
+    "parameters": [
+     {
+      "name": "source_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Source Id"
+      }
+     },
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SourceRead"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/sources/{source_id}": {
+   "delete": {
+    "tags": [
+     "knowledge"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v1_bots__bot_id__sources__source_id__delete",
+    "parameters": [
+     {
+      "name": "source_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Source Id"
+      }
+     },
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/test": {
+   "post": {
+    "tags": [
+     "knowledge"
+    ],
+    "summary": "Test Retrieval",
+    "description": "Run retrieval + reasoning for one question without storing anything.",
+    "operationId": "test_retrieval_api_v1_bots__bot_id__test_post",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TestRequest"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TestResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/domains": {
+   "get": {
+    "tags": [
+     "domains"
+    ],
+    "summary": "List Domains",
+    "operationId": "list_domains_api_v1_bots__bot_id__domains_get",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/DomainRead"
+         },
+         "title": "Response List Domains Api V1 Bots  Bot Id  Domains Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "domains"
+    ],
+    "summary": "Add Domain",
+    "operationId": "add_domain_api_v1_bots__bot_id__domains_post",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DomainCreate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DomainRead"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/domains/{domain_id}": {
+   "delete": {
+    "tags": [
+     "domains"
+    ],
+    "summary": "Remove Domain",
+    "operationId": "remove_domain_api_v1_bots__bot_id__domains__domain_id__delete",
+    "parameters": [
+     {
+      "name": "domain_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Domain Id"
+      }
+     },
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/conversations": {
+   "get": {
+    "tags": [
+     "conversations"
+    ],
+    "summary": "List Conversations",
+    "description": "Newest first, 50 per page. Pass `next_before` back as `before`.",
+    "operationId": "list_conversations_api_v1_bots__bot_id__conversations_get",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "filter",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "all",
+        "live",
+        "unanswered",
+        "down",
+        "handoff"
+       ],
+       "type": "string",
+       "default": "all",
+       "title": "Filter"
+      }
+     },
+     {
+      "name": "q",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "default": "",
+       "title": "Q"
+      }
+     },
+     {
+      "name": "before",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "date-time"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Before"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ConversationPage"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "conversations"
+    ],
+    "summary": "Clear History",
+    "operationId": "clear_history_api_v1_bots__bot_id__conversations_delete",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/conversations/export.csv": {
+   "get": {
+    "tags": [
+     "conversations"
+    ],
+    "summary": "Export Conversations",
+    "operationId": "export_conversations_api_v1_bots__bot_id__conversations_export_csv_get",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/conversations/{conversation_id}": {
+   "get": {
+    "tags": [
+     "conversations"
+    ],
+    "summary": "Get Conversation",
+    "description": "The full transcript. Opening it marks the conversation read.",
+    "operationId": "get_conversation_api_v1_bots__bot_id__conversations__conversation_id__get",
+    "parameters": [
+     {
+      "name": "conversation_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Conversation Id"
+      }
+     },
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ConversationDetail"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/leads": {
+   "get": {
+    "tags": [
+     "conversations"
+    ],
+    "summary": "List Leads",
+    "operationId": "list_leads_api_v1_bots__bot_id__leads_get",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/LeadRead"
+         },
+         "title": "Response List Leads Api V1 Bots  Bot Id  Leads Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/conversations/{conversation_id}/updates": {
+   "get": {
+    "tags": [
+     "conversations"
+    ],
+    "summary": "Conversation Updates",
+    "description": "Polled by an open transcript: messages newer than `after` and the status.",
+    "operationId": "conversation_updates_api_v1_bots__bot_id__conversations__conversation_id__updates_get",
+    "parameters": [
+     {
+      "name": "conversation_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Conversation Id"
+      }
+     },
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "after",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "date-time"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "After"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ConversationUpdates"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/conversations/{conversation_id}/takeover": {
+   "post": {
+    "tags": [
+     "conversations"
+    ],
+    "summary": "Take Over",
+    "operationId": "take_over_api_v1_bots__bot_id__conversations__conversation_id__takeover_post",
+    "parameters": [
+     {
+      "name": "conversation_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Conversation Id"
+      }
+     },
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/conversations/{conversation_id}/reply": {
+   "post": {
+    "tags": [
+     "conversations"
+    ],
+    "summary": "Agent Reply",
+    "operationId": "agent_reply_api_v1_bots__bot_id__conversations__conversation_id__reply_post",
+    "parameters": [
+     {
+      "name": "conversation_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Conversation Id"
+      }
+     },
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AgentReply"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MessageRead"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/conversations/{conversation_id}/handback": {
+   "post": {
+    "tags": [
+     "conversations"
+    ],
+    "summary": "Hand Back",
+    "operationId": "hand_back_api_v1_bots__bot_id__conversations__conversation_id__handback_post",
+    "parameters": [
+     {
+      "name": "conversation_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Conversation Id"
+      }
+     },
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/conversations/{conversation_id}/close": {
+   "post": {
+    "tags": [
+     "conversations"
+    ],
+    "summary": "Close",
+    "operationId": "close_api_v1_bots__bot_id__conversations__conversation_id__close_post",
+    "parameters": [
+     {
+      "name": "conversation_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Conversation Id"
+      }
+     },
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/widget/{bot_id}/config": {
+   "get": {
+    "tags": [
+     "widget"
+    ],
+    "summary": "Config",
+    "description": "Appearance and online state. Loading this marks the domain as seen,\nwhich is what the install check reports.",
+    "operationId": "config_api_v1_widget__bot_id__config_get",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "origin",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Origin"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/WidgetConfig"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/widget/{bot_id}/conversations": {
+   "post": {
+    "tags": [
+     "widget"
+    ],
+    "summary": "Start",
+    "operationId": "start_api_v1_widget__bot_id__conversations_post",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "origin",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Origin"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/StartConversation"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ConversationStarted"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/widget/{bot_id}/conversations/{conversation_id}/messages": {
+   "post": {
+    "tags": [
+     "widget"
+    ],
+    "summary": "Send",
+    "description": "Ask a question. With `stream: true` the reply arrives as server-sent\nevents: `delta` events with text, then a `done` event with the message.",
+    "operationId": "send_api_v1_widget__bot_id__conversations__conversation_id__messages_post",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "conversation_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Conversation Id"
+      }
+     },
+     {
+      "name": "origin",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Origin"
+      }
+     },
+     {
+      "name": "X-Conversation-Token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Conversation-Token"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SendMessage"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BotReply"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/widget/{bot_id}/conversations/{conversation_id}/messages/{message_id}/feedback": {
+   "post": {
+    "tags": [
+     "widget"
+    ],
+    "summary": "Feedback",
+    "operationId": "feedback_api_v1_widget__bot_id__conversations__conversation_id__messages__message_id__feedback_post",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "conversation_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Conversation Id"
+      }
+     },
+     {
+      "name": "message_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Message Id"
+      }
+     },
+     {
+      "name": "origin",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Origin"
+      }
+     },
+     {
+      "name": "X-Conversation-Token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Conversation-Token"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/FeedbackRequest"
+       }
+      }
+     }
+    },
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/widget/{bot_id}/conversations/{conversation_id}/identify": {
+   "post": {
+    "tags": [
+     "widget"
+    ],
+    "summary": "Identify",
+    "description": "`Pingie.identify({email, name})`: attribute the chat to a known user.",
+    "operationId": "identify_api_v1_widget__bot_id__conversations__conversation_id__identify_post",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "conversation_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Conversation Id"
+      }
+     },
+     {
+      "name": "origin",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Origin"
+      }
+     },
+     {
+      "name": "X-Conversation-Token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Conversation-Token"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/IdentifyRequest"
+       }
+      }
+     }
+    },
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/widget/{bot_id}/conversations/{conversation_id}/handoff": {
+   "post": {
+    "tags": [
+     "widget"
+    ],
+    "summary": "Request Handoff",
+    "description": "The visitor asked for a person. `waiting` when an agent is online,\notherwise `unavailable` and the next message is checked for an email.",
+    "operationId": "request_handoff_api_v1_widget__bot_id__conversations__conversation_id__handoff_post",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "conversation_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Conversation Id"
+      }
+     },
+     {
+      "name": "origin",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Origin"
+      }
+     },
+     {
+      "name": "X-Conversation-Token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Conversation-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HandoffResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/widget/{bot_id}/conversations/{conversation_id}/updates": {
+   "get": {
+    "tags": [
+     "widget"
+    ],
+    "summary": "Updates",
+    "description": "Polled while a person is handling the chat: agent and system messages\nnewer than `after`, plus who is answering.",
+    "operationId": "updates_api_v1_widget__bot_id__conversations__conversation_id__updates_get",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "conversation_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Conversation Id"
+      }
+     },
+     {
+      "name": "after",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "date-time"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "After"
+      }
+     },
+     {
+      "name": "origin",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Origin"
+      }
+     },
+     {
+      "name": "X-Conversation-Token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Conversation-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LiveUpdates"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/admin/auth/google": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Admin Google Login",
+    "operationId": "admin_google_login_api_v1_admin_auth_google_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/GoogleLogin"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/admin/me": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Admin Me",
+    "operationId": "admin_me_api_v1_admin_me_get",
+    "parameters": [
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/admin/orgs": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "List Orgs",
+    "operationId": "list_orgs_api_v1_admin_orgs_get",
+    "parameters": [
+     {
+      "name": "search",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Search"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/admin/orgs/{org_id}": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Get Org",
+    "operationId": "get_org_api_v1_admin_orgs__org_id__get",
+    "parameters": [
+     {
+      "name": "org_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Org Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/admin/orgs/{org_id}/plan": {
+   "patch": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Update Org Plan",
+    "operationId": "update_org_plan_api_v1_admin_orgs__org_id__plan_patch",
+    "parameters": [
+     {
+      "name": "org_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Org Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/OrgPlanUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/admin/plans": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Admin List Plans",
+    "operationId": "admin_list_plans_api_v1_admin_plans_get",
+    "parameters": [
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Admin Create Plan",
+    "operationId": "admin_create_plan_api_v1_admin_plans_post",
+    "parameters": [
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PlanCreate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/admin/plans/{key}": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Admin Get Plan",
+    "operationId": "admin_get_plan_api_v1_admin_plans__key__get",
+    "parameters": [
+     {
+      "name": "key",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Key"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "patch": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Admin Update Plan",
+    "operationId": "admin_update_plan_api_v1_admin_plans__key__patch",
+    "parameters": [
+     {
+      "name": "key",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Key"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PlanUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/plans": {
+   "get": {
+    "tags": [
+     "plans"
+    ],
+    "summary": "List Public Plans",
+    "operationId": "list_public_plans_api_v1_plans_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "type": "object"
+         },
+         "type": "array",
+         "title": "Response List Public Plans Api V1 Plans Get"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/orgs/{org_id}/members": {
+   "get": {
+    "tags": [
+     "sharing"
+    ],
+    "summary": "List Members",
+    "operationId": "list_members_api_v1_orgs__org_id__members_get",
+    "parameters": [
+     {
+      "name": "org_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Org Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/orgs/{org_id}/invitations": {
+   "post": {
+    "tags": [
+     "sharing"
+    ],
+    "summary": "Invite Member",
+    "operationId": "invite_member_api_v1_orgs__org_id__invitations_post",
+    "parameters": [
+     {
+      "name": "org_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Org Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/InviteCreate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/orgs/{org_id}/invitations/{inv_id}/resend": {
+   "post": {
+    "tags": [
+     "sharing"
+    ],
+    "summary": "Resend Member Invite",
+    "operationId": "resend_member_invite_api_v1_orgs__org_id__invitations__inv_id__resend_post",
+    "parameters": [
+     {
+      "name": "org_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Org Id"
+      }
+     },
+     {
+      "name": "inv_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Inv Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/orgs/{org_id}/invitations/{inv_id}": {
+   "delete": {
+    "tags": [
+     "sharing"
+    ],
+    "summary": "Revoke Member Invite",
+    "operationId": "revoke_member_invite_api_v1_orgs__org_id__invitations__inv_id__delete",
+    "parameters": [
+     {
+      "name": "org_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Org Id"
+      }
+     },
+     {
+      "name": "inv_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Inv Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/orgs/{org_id}/members/me": {
+   "delete": {
+    "tags": [
+     "sharing"
+    ],
+    "summary": "Leave Workspace",
+    "operationId": "leave_workspace_api_v1_orgs__org_id__members_me_delete",
+    "parameters": [
+     {
+      "name": "org_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Org Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/orgs/{org_id}/members/{user_id}": {
+   "patch": {
+    "tags": [
+     "sharing"
+    ],
+    "summary": "Set Member Role",
+    "operationId": "set_member_role_api_v1_orgs__org_id__members__user_id__patch",
+    "parameters": [
+     {
+      "name": "org_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Org Id"
+      }
+     },
+     {
+      "name": "user_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "User Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RoleUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "sharing"
+    ],
+    "summary": "Remove Member",
+    "operationId": "remove_member_api_v1_orgs__org_id__members__user_id__delete",
+    "parameters": [
+     {
+      "name": "org_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Org Id"
+      }
+     },
+     {
+      "name": "user_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "User Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/shares": {
+   "get": {
+    "tags": [
+     "sharing"
+    ],
+    "summary": "List Shares",
+    "operationId": "list_shares_api_v1_bots__bot_id__shares_get",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/invitations": {
+   "post": {
+    "tags": [
+     "sharing"
+    ],
+    "summary": "Invite To Bot",
+    "operationId": "invite_to_bot_api_v1_bots__bot_id__invitations_post",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/InviteCreate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/invitations/{inv_id}/resend": {
+   "post": {
+    "tags": [
+     "sharing"
+    ],
+    "summary": "Resend Bot Invite",
+    "operationId": "resend_bot_invite_api_v1_bots__bot_id__invitations__inv_id__resend_post",
+    "parameters": [
+     {
+      "name": "inv_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Inv Id"
+      }
+     },
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/invitations/{inv_id}": {
+   "delete": {
+    "tags": [
+     "sharing"
+    ],
+    "summary": "Revoke Bot Invite",
+    "operationId": "revoke_bot_invite_api_v1_bots__bot_id__invitations__inv_id__delete",
+    "parameters": [
+     {
+      "name": "inv_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Inv Id"
+      }
+     },
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/shares/{user_id}": {
+   "patch": {
+    "tags": [
+     "sharing"
+    ],
+    "summary": "Set Share Role",
+    "operationId": "set_share_role_api_v1_bots__bot_id__shares__user_id__patch",
+    "parameters": [
+     {
+      "name": "user_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "User Id"
+      }
+     },
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RoleUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "sharing"
+    ],
+    "summary": "Remove Share",
+    "operationId": "remove_share_api_v1_bots__bot_id__shares__user_id__delete",
+    "parameters": [
+     {
+      "name": "user_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "User Id"
+      }
+     },
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/shared-bots/{bot_id}": {
+   "delete": {
+    "tags": [
+     "sharing"
+    ],
+    "summary": "Leave Shared Bot",
+    "description": "Remove a bot from your own \"Shared with me\" list.",
+    "operationId": "leave_shared_bot_api_v1_shared_bots__bot_id__delete",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/shared-bots": {
+   "get": {
+    "tags": [
+     "sharing"
+    ],
+    "summary": "List Shared Bots",
+    "operationId": "list_shared_bots_api_v1_shared_bots_get",
+    "parameters": [
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/invitations/mine": {
+   "get": {
+    "tags": [
+     "sharing"
+    ],
+    "summary": "My Invitations",
+    "operationId": "my_invitations_api_v1_invitations_mine_get",
+    "parameters": [
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/invitations/{inv_id}/accept": {
+   "post": {
+    "tags": [
+     "sharing"
+    ],
+    "summary": "Accept Mine",
+    "operationId": "accept_mine_api_v1_invitations__inv_id__accept_post",
+    "parameters": [
+     {
+      "name": "inv_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Inv Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/invitations/{inv_id}/decline": {
+   "post": {
+    "tags": [
+     "sharing"
+    ],
+    "summary": "Decline Mine",
+    "operationId": "decline_mine_api_v1_invitations__inv_id__decline_post",
+    "parameters": [
+     {
+      "name": "inv_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Inv Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/invitations/by-token/{token}": {
+   "get": {
+    "tags": [
+     "sharing"
+    ],
+    "summary": "Preview Invite",
+    "operationId": "preview_invite_api_v1_invitations_by_token__token__get",
+    "parameters": [
+     {
+      "name": "token",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Token"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/invitations/by-token/{token}/accept": {
+   "post": {
+    "tags": [
+     "sharing"
+    ],
+    "summary": "Accept By Token",
+    "operationId": "accept_by_token_api_v1_invitations_by_token__token__accept_post",
+    "parameters": [
+     {
+      "name": "token",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Token"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/invitations/by-token/{token}/decline": {
+   "post": {
+    "tags": [
+     "sharing"
+    ],
+    "summary": "Decline By Token",
+    "operationId": "decline_by_token_api_v1_invitations_by_token__token__decline_post",
+    "parameters": [
+     {
+      "name": "token",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Token"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/me/presence": {
+   "post": {
+    "tags": [
+     "live"
+    ],
+    "summary": "Heartbeat",
+    "description": "Sent every ~30 s by an open dashboard tab.",
+    "operationId": "heartbeat_api_v1_me_presence_post",
+    "parameters": [
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/Presence"
+       }
+      }
+     }
+    },
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/me/live": {
+   "get": {
+    "tags": [
+     "live"
+    ],
+    "summary": "Live",
+    "description": "Chats waiting for a person on any bot this user can edit, and their own.",
+    "operationId": "live_api_v1_me_live_get",
+    "parameters": [
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/answers": {
+   "get": {
+    "tags": [
+     "answers"
+    ],
+    "summary": "List Answers",
+    "operationId": "list_answers_api_v1_bots__bot_id__answers_get",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "answers"
+    ],
+    "summary": "Add Answer",
+    "operationId": "add_answer_api_v1_bots__bot_id__answers_post",
+    "parameters": [
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AnswerCreate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/bots/{bot_id}/answers/{answer_id}": {
+   "delete": {
+    "tags": [
+     "answers"
+    ],
+    "summary": "Delete Answer",
+    "operationId": "delete_answer_api_v1_bots__bot_id__answers__answer_id__delete",
+    "parameters": [
+     {
+      "name": "answer_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Answer Id"
+      }
+     },
+     {
+      "name": "bot_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Bot Id"
+      }
+     },
+     {
+      "name": "authorization",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/health": {
+   "get": {
+    "tags": [
+     "meta"
+    ],
+    "summary": "Health",
+    "operationId": "health_health_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": {
+          "type": "string"
+         },
+         "type": "object",
+         "title": "Response Health Health Get"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "AgentReply": {
+    "properties": {
+     "text": {
+      "type": "string",
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Text"
+     }
+    },
+    "type": "object",
+    "required": [
+     "text"
+    ],
+    "title": "AgentReply"
+   },
+   "AnswerCreate": {
+    "properties": {
+     "question": {
+      "type": "string",
+      "maxLength": 1000,
+      "minLength": 2,
+      "title": "Question"
+     },
+     "answer": {
+      "type": "string",
+      "maxLength": 8000,
+      "minLength": 2,
+      "title": "Answer"
+     },
+     "conversation_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Conversation Id"
+     },
+     "also_reply": {
+      "type": "boolean",
+      "title": "Also Reply",
+      "default": false
+     }
+    },
+    "type": "object",
+    "required": [
+     "question",
+     "answer"
+    ],
+    "title": "AnswerCreate"
+   },
+   "AuthResponse": {
+    "properties": {
+     "user": {
+      "$ref": "#/components/schemas/UserRead"
+     }
+    },
+    "type": "object",
+    "required": [
+     "user"
+    ],
+    "title": "AuthResponse"
+   },
+   "Body_upload_api_v1_bots__bot_id__sources_upload_post": {
+    "properties": {
+     "file": {
+      "type": "string",
+      "format": "binary",
+      "title": "File"
+     }
+    },
+    "type": "object",
+    "required": [
+     "file"
+    ],
+    "title": "Body_upload_api_v1_bots__bot_id__sources_upload_post"
+   },
+   "BotCounts": {
+    "properties": {
+     "conversations": {
+      "type": "integer",
+      "title": "Conversations"
+     },
+     "sources": {
+      "type": "integer",
+      "title": "Sources"
+     },
+     "domains": {
+      "type": "integer",
+      "title": "Domains"
+     },
+     "live": {
+      "type": "integer",
+      "title": "Live",
+      "default": 0
+     }
+    },
+    "type": "object",
+    "required": [
+     "conversations",
+     "sources",
+     "domains"
+    ],
+    "title": "BotCounts"
+   },
+   "BotCreate": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "maxLength": 120,
+      "minLength": 2,
+      "title": "Name"
+     },
+     "domain": {
+      "type": "string",
+      "maxLength": 255,
+      "minLength": 3,
+      "title": "Domain"
+     },
+     "sitemap_url": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 2048
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sitemap Url"
+     }
+    },
+    "type": "object",
+    "required": [
+     "name",
+     "domain"
+    ],
+    "title": "BotCreate"
+   },
+   "BotDetail": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "organization_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Organization Id"
+     },
+     "organization_name": {
+      "type": "string",
+      "title": "Organization Name"
+     },
+     "access_role": {
+      "type": "string",
+      "title": "Access Role"
+     },
+     "access_via": {
+      "type": "string",
+      "title": "Access Via"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "initials": {
+      "type": "string",
+      "title": "Initials"
+     },
+     "color": {
+      "type": "string",
+      "title": "Color"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "live",
+       "paused",
+       "draft"
+      ],
+      "title": "Status"
+     },
+     "domain": {
+      "type": "string",
+      "title": "Domain"
+     },
+     "public_key": {
+      "type": "string",
+      "title": "Public Key"
+     },
+     "instructions": {
+      "type": "string",
+      "title": "Instructions"
+     },
+     "model_tier": {
+      "type": "string",
+      "enum": [
+       "fast",
+       "balanced",
+       "best"
+      ],
+      "title": "Model Tier"
+     },
+     "tone": {
+      "type": "string",
+      "enum": [
+       "friendly",
+       "professional",
+       "concise"
+      ],
+      "title": "Tone"
+     },
+     "reply_language": {
+      "type": "string",
+      "enum": [
+       "auto",
+       "en",
+       "hi",
+       "ta"
+      ],
+      "title": "Reply Language"
+     },
+     "min_similarity": {
+      "type": "number",
+      "title": "Min Similarity"
+     },
+     "fallback_message": {
+      "type": "string",
+      "title": "Fallback Message"
+     },
+     "collect_email": {
+      "type": "boolean",
+      "title": "Collect Email"
+     },
+     "handoff_email": {
+      "type": "string",
+      "title": "Handoff Email"
+     },
+     "offline_message": {
+      "type": "string",
+      "title": "Offline Message"
+     },
+     "allow_localhost": {
+      "type": "boolean",
+      "title": "Allow Localhost"
+     },
+     "appearance": {
+      "$ref": "#/components/schemas/WidgetAppearance"
+     },
+     "counts": {
+      "$ref": "#/components/schemas/BotCounts"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Updated At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "organization_id",
+     "organization_name",
+     "access_role",
+     "access_via",
+     "name",
+     "initials",
+     "color",
+     "status",
+     "domain",
+     "public_key",
+     "instructions",
+     "model_tier",
+     "tone",
+     "reply_language",
+     "min_similarity",
+     "fallback_message",
+     "collect_email",
+     "handoff_email",
+     "offline_message",
+     "allow_localhost",
+     "appearance",
+     "counts",
+     "created_at",
+     "updated_at"
+    ],
+    "title": "BotDetail"
+   },
+   "BotReply": {
+    "properties": {
+     "message_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Message Id"
+     },
+     "text": {
+      "type": "string",
+      "title": "Text"
+     },
+     "outcome": {
+      "type": "string",
+      "title": "Outcome"
+     },
+     "citations": {
+      "items": {
+       "$ref": "#/components/schemas/CitationRead"
+      },
+      "type": "array",
+      "title": "Citations"
+     },
+     "asks_for_email": {
+      "type": "boolean",
+      "title": "Asks For Email"
+     },
+     "offer_human": {
+      "type": "boolean",
+      "title": "Offer Human",
+      "default": false
+     },
+     "status": {
+      "type": "string",
+      "title": "Status",
+      "default": "bot"
+     }
+    },
+    "type": "object",
+    "required": [
+     "message_id",
+     "text",
+     "outcome",
+     "citations",
+     "asks_for_email"
+    ],
+    "title": "BotReply"
+   },
+   "BotSummary": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "initials": {
+      "type": "string",
+      "title": "Initials"
+     },
+     "color": {
+      "type": "string",
+      "title": "Color"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "live",
+       "paused",
+       "draft"
+      ],
+      "title": "Status"
+     },
+     "domain": {
+      "type": "string",
+      "title": "Domain"
+     },
+     "conversations_30d": {
+      "type": "integer",
+      "title": "Conversations 30D"
+     },
+     "resolution_rate": {
+      "type": "integer",
+      "title": "Resolution Rate"
+     },
+     "sources": {
+      "type": "integer",
+      "title": "Sources"
+     },
+     "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Updated At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "name",
+     "initials",
+     "color",
+     "status",
+     "domain",
+     "conversations_30d",
+     "resolution_rate",
+     "sources",
+     "updated_at"
+    ],
+    "title": "BotSummary",
+    "description": "A card on the All bots page."
+   },
+   "BotUpdate": {
+    "properties": {
+     "name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 120,
+        "minLength": 2
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "color": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^#[0-9a-fA-F]{6}$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Color"
+     },
+     "status": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "live",
+         "paused",
+         "draft"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Status"
+     },
+     "domain": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 255,
+        "minLength": 3
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Domain"
+     },
+     "instructions": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 4000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Instructions"
+     },
+     "model_tier": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "fast",
+         "balanced",
+         "best"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Model Tier"
+     },
+     "tone": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "friendly",
+         "professional",
+         "concise"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tone"
+     },
+     "reply_language": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "auto",
+         "en",
+         "hi",
+         "ta"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reply Language"
+     },
+     "min_similarity": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 1.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Min Similarity"
+     },
+     "fallback_message": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 1000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fallback Message"
+     },
+     "collect_email": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Collect Email"
+     },
+     "handoff_email": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 320
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Handoff Email"
+     },
+     "offline_message": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 1000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Offline Message"
+     },
+     "allow_localhost": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Allow Localhost"
+     }
+    },
+    "type": "object",
+    "title": "BotUpdate"
+   },
+   "CitationRead": {
+    "properties": {
+     "source_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Source Id"
+     },
+     "source_name": {
+      "type": "string",
+      "title": "Source Name"
+     },
+     "location": {
+      "type": "string",
+      "title": "Location",
+      "default": ""
+     },
+     "chunk_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Chunk Id"
+     },
+     "score": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Score"
+     }
+    },
+    "type": "object",
+    "required": [
+     "source_name"
+    ],
+    "title": "CitationRead"
+   },
+   "ConversationDetail": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "visitor": {
+      "type": "string",
+      "title": "Visitor"
+     },
+     "location": {
+      "type": "string",
+      "title": "Location"
+     },
+     "page": {
+      "type": "string",
+      "title": "Page"
+     },
+     "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Started At"
+     },
+     "last_message_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Last Message At"
+     },
+     "outcome": {
+      "type": "string",
+      "enum": [
+       "answered",
+       "partial",
+       "fallback"
+      ],
+      "title": "Outcome"
+     },
+     "message_count": {
+      "type": "integer",
+      "title": "Message Count"
+     },
+     "preview": {
+      "type": "string",
+      "title": "Preview"
+     },
+     "unread": {
+      "type": "boolean",
+      "title": "Unread"
+     },
+     "handoff_email": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Handoff Email"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "bot",
+       "waiting",
+       "human",
+       "closed"
+      ],
+      "title": "Status"
+     },
+     "assigned_to": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Assigned To"
+     },
+     "waiting_since": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Waiting Since"
+     },
+     "duration_seconds": {
+      "type": "integer",
+      "title": "Duration Seconds"
+     },
+     "messages": {
+      "items": {
+       "$ref": "#/components/schemas/MessageRead"
+      },
+      "type": "array",
+      "title": "Messages"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "visitor",
+     "location",
+     "page",
+     "started_at",
+     "last_message_at",
+     "outcome",
+     "message_count",
+     "preview",
+     "unread",
+     "handoff_email",
+     "status",
+     "assigned_to",
+     "waiting_since",
+     "duration_seconds",
+     "messages"
+    ],
+    "title": "ConversationDetail"
+   },
+   "ConversationPage": {
+    "properties": {
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/ConversationSummary"
+      },
+      "type": "array",
+      "title": "Items"
+     },
+     "next_before": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Next Before"
+     }
+    },
+    "type": "object",
+    "required": [
+     "items",
+     "next_before"
+    ],
+    "title": "ConversationPage"
+   },
+   "ConversationStarted": {
+    "properties": {
+     "conversation_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Conversation Id"
+     },
+     "token": {
+      "type": "string",
+      "title": "Token"
+     }
+    },
+    "type": "object",
+    "required": [
+     "conversation_id",
+     "token"
+    ],
+    "title": "ConversationStarted"
+   },
+   "ConversationSummary": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "visitor": {
+      "type": "string",
+      "title": "Visitor"
+     },
+     "location": {
+      "type": "string",
+      "title": "Location"
+     },
+     "page": {
+      "type": "string",
+      "title": "Page"
+     },
+     "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Started At"
+     },
+     "last_message_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Last Message At"
+     },
+     "outcome": {
+      "type": "string",
+      "enum": [
+       "answered",
+       "partial",
+       "fallback"
+      ],
+      "title": "Outcome"
+     },
+     "message_count": {
+      "type": "integer",
+      "title": "Message Count"
+     },
+     "preview": {
+      "type": "string",
+      "title": "Preview"
+     },
+     "unread": {
+      "type": "boolean",
+      "title": "Unread"
+     },
+     "handoff_email": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Handoff Email"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "bot",
+       "waiting",
+       "human",
+       "closed"
+      ],
+      "title": "Status"
+     },
+     "assigned_to": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Assigned To"
+     },
+     "waiting_since": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Waiting Since"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "visitor",
+     "location",
+     "page",
+     "started_at",
+     "last_message_at",
+     "outcome",
+     "message_count",
+     "preview",
+     "unread",
+     "handoff_email",
+     "status",
+     "assigned_to",
+     "waiting_since"
+    ],
+    "title": "ConversationSummary"
+   },
+   "ConversationUpdates": {
+    "properties": {
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "agent": {
+      "anyOf": [
+       {
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Agent"
+     },
+     "messages": {
+      "items": {
+       "$ref": "#/components/schemas/MessageRead"
+      },
+      "type": "array",
+      "title": "Messages"
+     }
+    },
+    "type": "object",
+    "required": [
+     "status",
+     "agent",
+     "messages"
+    ],
+    "title": "ConversationUpdates"
+   },
+   "DomainCreate": {
+    "properties": {
+     "host": {
+      "type": "string",
+      "maxLength": 255,
+      "minLength": 3,
+      "title": "Host"
+     }
+    },
+    "type": "object",
+    "required": [
+     "host"
+    ],
+    "title": "DomainCreate"
+   },
+   "DomainRead": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "host": {
+      "type": "string",
+      "title": "Host"
+     },
+     "receiving_traffic": {
+      "type": "boolean",
+      "title": "Receiving Traffic"
+     },
+     "last_seen_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Seen At"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "host",
+     "receiving_traffic",
+     "last_seen_at",
+     "created_at"
+    ],
+    "title": "DomainRead"
+   },
+   "FeedbackRequest": {
+    "properties": {
+     "value": {
+      "type": "string",
+      "pattern": "^(up|down)$",
+      "title": "Value"
+     }
+    },
+    "type": "object",
+    "required": [
+     "value"
+    ],
+    "title": "FeedbackRequest"
+   },
+   "GoogleLogin": {
+    "properties": {
+     "id_token": {
+      "type": "string",
+      "minLength": 10,
+      "title": "Id Token"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id_token"
+    ],
+    "title": "GoogleLogin"
+   },
+   "GoogleLoginRequest": {
+    "properties": {
+     "id_token": {
+      "type": "string",
+      "minLength": 1,
+      "title": "Id Token"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id_token"
+    ],
+    "title": "GoogleLoginRequest"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "HandoffResult": {
+    "properties": {
+     "status": {
+      "type": "string",
+      "title": "Status"
+     }
+    },
+    "type": "object",
+    "required": [
+     "status"
+    ],
+    "title": "HandoffResult"
+   },
+   "IdentifyRequest": {
+    "properties": {
+     "email": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "email"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Email"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 255
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     }
+    },
+    "type": "object",
+    "title": "IdentifyRequest"
+   },
+   "InstallInfo": {
+    "properties": {
+     "bot_id": {
+      "type": "string",
+      "title": "Bot Id"
+     },
+     "public_key": {
+      "type": "string",
+      "title": "Public Key"
+     },
+     "script_url": {
+      "type": "string",
+      "title": "Script Url"
+     },
+     "snippet_html": {
+      "type": "string",
+      "title": "Snippet Html"
+     },
+     "detected": {
+      "type": "boolean",
+      "title": "Detected"
+     },
+     "detected_host": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Detected Host"
+     },
+     "detected_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Detected At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "bot_id",
+     "public_key",
+     "script_url",
+     "snippet_html",
+     "detected",
+     "detected_host",
+     "detected_at"
+    ],
+    "title": "InstallInfo"
+   },
+   "InviteCreate": {
+    "properties": {
+     "email": {
+      "type": "string",
+      "format": "email",
+      "title": "Email"
+     },
+     "role": {
+      "type": "string",
+      "title": "Role",
+      "default": "viewer"
+     }
+    },
+    "type": "object",
+    "required": [
+     "email"
+    ],
+    "title": "InviteCreate"
+   },
+   "Kpi": {
+    "properties": {
+     "key": {
+      "type": "string",
+      "title": "Key"
+     },
+     "label": {
+      "type": "string",
+      "title": "Label"
+     },
+     "value": {
+      "type": "string",
+      "title": "Value"
+     },
+     "delta": {
+      "type": "string",
+      "title": "Delta"
+     },
+     "tone": {
+      "type": "string",
+      "title": "Tone"
+     },
+     "sub": {
+      "type": "string",
+      "title": "Sub"
+     }
+    },
+    "type": "object",
+    "required": [
+     "key",
+     "label",
+     "value",
+     "delta",
+     "tone",
+     "sub"
+    ],
+    "title": "Kpi"
+   },
+   "LeadRead": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "email": {
+      "type": "string",
+      "title": "Email"
+     },
+     "question": {
+      "type": "string",
+      "title": "Question"
+     },
+     "conversation_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Conversation Id"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "email",
+     "question",
+     "conversation_id",
+     "created_at"
+    ],
+    "title": "LeadRead"
+   },
+   "LiveAgent": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "avatar_url": {
+      "type": "string",
+      "title": "Avatar Url"
+     }
+    },
+    "type": "object",
+    "required": [
+     "name",
+     "avatar_url"
+    ],
+    "title": "LiveAgent"
+   },
+   "LiveMessage": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "role": {
+      "type": "string",
+      "title": "Role"
+     },
+     "content": {
+      "type": "string",
+      "title": "Content"
+     },
+     "outcome": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Outcome"
+     },
+     "citations": {
+      "items": {
+       "$ref": "#/components/schemas/CitationRead"
+      },
+      "type": "array",
+      "title": "Citations"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "author_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Author Name"
+     },
+     "asks_for_email": {
+      "type": "boolean",
+      "title": "Asks For Email"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "role",
+     "content",
+     "outcome",
+     "citations",
+     "created_at",
+     "author_name",
+     "asks_for_email"
+    ],
+    "title": "LiveMessage"
+   },
+   "LiveUpdates": {
+    "properties": {
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "agent": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/LiveAgent"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "messages": {
+      "items": {
+       "$ref": "#/components/schemas/LiveMessage"
+      },
+      "type": "array",
+      "title": "Messages"
+     }
+    },
+    "type": "object",
+    "required": [
+     "status",
+     "agent",
+     "messages"
+    ],
+    "title": "LiveUpdates"
+   },
+   "MessageRead": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "role": {
+      "type": "string",
+      "enum": [
+       "visitor",
+       "bot",
+       "agent",
+       "system"
+      ],
+      "title": "Role"
+     },
+     "content": {
+      "type": "string",
+      "title": "Content"
+     },
+     "outcome": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Outcome"
+     },
+     "citations": {
+      "items": {
+       "$ref": "#/components/schemas/CitationRead"
+      },
+      "type": "array",
+      "title": "Citations"
+     },
+     "feedback": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "up",
+         "down"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Feedback"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "author_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Author Name"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "role",
+     "content",
+     "outcome",
+     "citations",
+     "feedback",
+     "created_at"
+    ],
+    "title": "MessageRead"
+   },
+   "OrgPlanUpdate": {
+    "properties": {
+     "plan": {
+      "type": "string",
+      "title": "Plan"
+     },
+     "messages_limit": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Messages Limit"
+     },
+     "bots_limit": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bots Limit"
+     },
+     "sources_limit": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sources Limit"
+     },
+     "members_limit": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Members Limit"
+     },
+     "shares_limit": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Shares Limit"
+     },
+     "remove_branding": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Remove Branding"
+     }
+    },
+    "type": "object",
+    "required": [
+     "plan"
+    ],
+    "title": "OrgPlanUpdate"
+   },
+   "OrganizationRead": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "slug": {
+      "type": "string",
+      "title": "Slug"
+     },
+     "plan": {
+      "type": "string",
+      "title": "Plan"
+     },
+     "plan_name": {
+      "type": "string",
+      "title": "Plan Name"
+     },
+     "can_upgrade": {
+      "type": "boolean",
+      "title": "Can Upgrade"
+     },
+     "allowed_model_tiers": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Allowed Model Tiers"
+     },
+     "role": {
+      "type": "string",
+      "title": "Role"
+     },
+     "initial": {
+      "type": "string",
+      "title": "Initial"
+     },
+     "usage": {
+      "$ref": "#/components/schemas/OrganizationUsage"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "name",
+     "slug",
+     "plan",
+     "plan_name",
+     "can_upgrade",
+     "allowed_model_tiers",
+     "role",
+     "initial",
+     "usage"
+    ],
+    "title": "OrganizationRead"
+   },
+   "OrganizationUpdate": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "maxLength": 255,
+      "minLength": 1,
+      "title": "Name"
+     }
+    },
+    "type": "object",
+    "required": [
+     "name"
+    ],
+    "title": "OrganizationUpdate"
+   },
+   "OrganizationUsage": {
+    "properties": {
+     "messages_used": {
+      "type": "integer",
+      "title": "Messages Used"
+     },
+     "messages_limit": {
+      "type": "integer",
+      "title": "Messages Limit"
+     },
+     "bots_used": {
+      "type": "integer",
+      "title": "Bots Used"
+     },
+     "bots_limit": {
+      "type": "integer",
+      "title": "Bots Limit"
+     },
+     "sources_limit": {
+      "type": "integer",
+      "title": "Sources Limit"
+     },
+     "members_limit": {
+      "type": "integer",
+      "title": "Members Limit"
+     },
+     "shares_limit": {
+      "type": "integer",
+      "title": "Shares Limit"
+     },
+     "remove_branding": {
+      "type": "boolean",
+      "title": "Remove Branding"
+     }
+    },
+    "type": "object",
+    "required": [
+     "messages_used",
+     "messages_limit",
+     "bots_used",
+     "bots_limit",
+     "sources_limit",
+     "members_limit",
+     "shares_limit",
+     "remove_branding"
+    ],
+    "title": "OrganizationUsage"
+   },
+   "OutcomeShare": {
+    "properties": {
+     "key": {
+      "type": "string",
+      "title": "Key"
+     },
+     "label": {
+      "type": "string",
+      "title": "Label"
+     },
+     "pct": {
+      "type": "integer",
+      "title": "Pct"
+     }
+    },
+    "type": "object",
+    "required": [
+     "key",
+     "label",
+     "pct"
+    ],
+    "title": "OutcomeShare"
+   },
+   "Overview": {
+    "properties": {
+     "range": {
+      "type": "string",
+      "enum": [
+       "24h",
+       "7d",
+       "30d",
+       "90d"
+      ],
+      "title": "Range"
+     },
+     "kpis": {
+      "items": {
+       "$ref": "#/components/schemas/Kpi"
+      },
+      "type": "array",
+      "title": "Kpis"
+     },
+     "series_total": {
+      "type": "integer",
+      "title": "Series Total"
+     },
+     "series": {
+      "items": {
+       "$ref": "#/components/schemas/SeriesPoint"
+      },
+      "type": "array",
+      "title": "Series"
+     },
+     "outcomes": {
+      "items": {
+       "$ref": "#/components/schemas/OutcomeShare"
+      },
+      "type": "array",
+      "title": "Outcomes"
+     },
+     "resolved_pct": {
+      "type": "integer",
+      "title": "Resolved Pct"
+     },
+     "messages_per_day": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "Messages Per Day"
+     },
+     "messages_14d": {
+      "type": "integer",
+      "title": "Messages 14D"
+     },
+     "top_pages": {
+      "items": {
+       "$ref": "#/components/schemas/TopPage"
+      },
+      "type": "array",
+      "title": "Top Pages"
+     },
+     "knowledge_gaps": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Knowledge Gaps"
+     },
+     "unanswered_count": {
+      "type": "integer",
+      "title": "Unanswered Count"
+     },
+     "top_questions": {
+      "items": {
+       "$ref": "#/components/schemas/TopQuestion"
+      },
+      "type": "array",
+      "title": "Top Questions"
+     }
+    },
+    "type": "object",
+    "required": [
+     "range",
+     "kpis",
+     "series_total",
+     "series",
+     "outcomes",
+     "resolved_pct",
+     "messages_per_day",
+     "messages_14d",
+     "top_pages",
+     "knowledge_gaps",
+     "unanswered_count",
+     "top_questions"
+    ],
+    "title": "Overview"
+   },
+   "PlanCreate": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "maxLength": 80,
+      "minLength": 1,
+      "title": "Name"
+     },
+     "description": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 500
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "price_monthly": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Price Monthly"
+     },
+     "price_label": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 40
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Price Label"
+     },
+     "messages_limit": {
+      "type": "integer",
+      "minimum": 0.0,
+      "title": "Messages Limit"
+     },
+     "bots_limit": {
+      "type": "integer",
+      "minimum": 0.0,
+      "title": "Bots Limit"
+     },
+     "sources_limit": {
+      "type": "integer",
+      "minimum": 0.0,
+      "title": "Sources Limit"
+     },
+     "members_limit": {
+      "type": "integer",
+      "minimum": 0.0,
+      "title": "Members Limit"
+     },
+     "shares_limit": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Shares Limit"
+     },
+     "remove_branding": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Remove Branding"
+     },
+     "model_tiers": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Model Tiers"
+     },
+     "features": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Features"
+     },
+     "is_public": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Is Public"
+     },
+     "is_default": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Is Default"
+     },
+     "highlighted": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Highlighted"
+     },
+     "sort_order": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sort Order"
+     },
+     "active": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Active"
+     },
+     "key": {
+      "type": "string",
+      "maxLength": 32,
+      "minLength": 1,
+      "title": "Key"
+     }
+    },
+    "type": "object",
+    "required": [
+     "name",
+     "messages_limit",
+     "bots_limit",
+     "sources_limit",
+     "members_limit",
+     "key"
+    ],
+    "title": "PlanCreate"
+   },
+   "PlanUpdate": {
+    "properties": {
+     "name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 80,
+        "minLength": 1
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "description": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 500
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "price_monthly": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Price Monthly"
+     },
+     "price_label": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 40
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Price Label"
+     },
+     "messages_limit": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Messages Limit"
+     },
+     "bots_limit": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bots Limit"
+     },
+     "sources_limit": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sources Limit"
+     },
+     "members_limit": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Members Limit"
+     },
+     "shares_limit": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Shares Limit"
+     },
+     "remove_branding": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Remove Branding"
+     },
+     "model_tiers": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Model Tiers"
+     },
+     "features": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Features"
+     },
+     "is_public": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Is Public"
+     },
+     "is_default": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Is Default"
+     },
+     "highlighted": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Highlighted"
+     },
+     "sort_order": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sort Order"
+     },
+     "active": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Active"
+     },
+     "apply_to_existing": {
+      "type": "boolean",
+      "title": "Apply To Existing",
+      "default": false
+     }
+    },
+    "type": "object",
+    "title": "PlanUpdate"
+   },
+   "Presence": {
+    "properties": {
+     "available": {
+      "type": "boolean",
+      "title": "Available"
+     }
+    },
+    "type": "object",
+    "required": [
+     "available"
+    ],
+    "title": "Presence"
+   },
+   "RoleUpdate": {
+    "properties": {
+     "role": {
+      "type": "string",
+      "title": "Role"
+     }
+    },
+    "type": "object",
+    "required": [
+     "role"
+    ],
+    "title": "RoleUpdate"
+   },
+   "SendMessage": {
+    "properties": {
+     "text": {
+      "type": "string",
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Text"
+     },
+     "stream": {
+      "type": "boolean",
+      "title": "Stream",
+      "default": false
+     }
+    },
+    "type": "object",
+    "required": [
+     "text"
+    ],
+    "title": "SendMessage"
+   },
+   "SeriesPoint": {
+    "properties": {
+     "label": {
+      "type": "string",
+      "title": "Label"
+     },
+     "conversations": {
+      "type": "integer",
+      "title": "Conversations"
+     },
+     "unanswered": {
+      "type": "integer",
+      "title": "Unanswered"
+     }
+    },
+    "type": "object",
+    "required": [
+     "label",
+     "conversations",
+     "unanswered"
+    ],
+    "title": "SeriesPoint"
+   },
+   "SourceList": {
+    "properties": {
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/SourceRead"
+      },
+      "type": "array",
+      "title": "Items"
+     },
+     "summary": {
+      "$ref": "#/components/schemas/SourceSummary"
+     }
+    },
+    "type": "object",
+    "required": [
+     "items",
+     "summary"
+    ],
+    "title": "SourceList"
+   },
+   "SourceRead": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "type": {
+      "type": "string",
+      "enum": [
+       "pdf",
+       "docx",
+       "text",
+       "url",
+       "sitemap",
+       "page"
+      ],
+      "title": "Type"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "queued",
+       "indexing",
+       "ready",
+       "failed"
+      ],
+      "title": "Status"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "progress": {
+      "type": "integer",
+      "title": "Progress"
+     },
+     "chunks": {
+      "type": "integer",
+      "title": "Chunks"
+     },
+     "size_bytes": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Size Bytes"
+     },
+     "page_count": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Page Count"
+     },
+     "url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Url"
+     },
+     "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Updated At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "name",
+     "type",
+     "status",
+     "error",
+     "progress",
+     "chunks",
+     "size_bytes",
+     "page_count",
+     "url",
+     "updated_at"
+    ],
+    "title": "SourceRead"
+   },
+   "SourceSummary": {
+    "properties": {
+     "total": {
+      "type": "integer",
+      "title": "Total"
+     },
+     "ready": {
+      "type": "integer",
+      "title": "Ready"
+     },
+     "failed": {
+      "type": "integer",
+      "title": "Failed"
+     },
+     "indexing": {
+      "type": "integer",
+      "title": "Indexing"
+     },
+     "chunks": {
+      "type": "integer",
+      "title": "Chunks"
+     },
+     "last_sync": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Sync"
+     }
+    },
+    "type": "object",
+    "required": [
+     "total",
+     "ready",
+     "failed",
+     "indexing",
+     "chunks",
+     "last_sync"
+    ],
+    "title": "SourceSummary"
+   },
+   "StartConversation": {
+    "properties": {
+     "visitor_id": {
+      "type": "string",
+      "maxLength": 64,
+      "minLength": 8,
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "title": "Visitor Id"
+     },
+     "page_url": {
+      "type": "string",
+      "maxLength": 2048,
+      "title": "Page Url",
+      "default": ""
+     }
+    },
+    "type": "object",
+    "required": [
+     "visitor_id"
+    ],
+    "title": "StartConversation"
+   },
+   "TestChunk": {
+    "properties": {
+     "rank": {
+      "type": "integer",
+      "title": "Rank"
+     },
+     "source": {
+      "type": "string",
+      "title": "Source"
+     },
+     "location": {
+      "type": "string",
+      "title": "Location"
+     },
+     "score": {
+      "type": "number",
+      "title": "Score"
+     },
+     "rerank_score": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rerank Score"
+     },
+     "above_threshold": {
+      "type": "boolean",
+      "title": "Above Threshold"
+     },
+     "text": {
+      "type": "string",
+      "title": "Text"
+     }
+    },
+    "type": "object",
+    "required": [
+     "rank",
+     "source",
+     "location",
+     "score",
+     "rerank_score",
+     "above_threshold",
+     "text"
+    ],
+    "title": "TestChunk"
+   },
+   "TestRequest": {
+    "properties": {
+     "query": {
+      "type": "string",
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Query"
+     },
+     "top_k": {
+      "type": "integer",
+      "maximum": 10.0,
+      "minimum": 1.0,
+      "title": "Top K",
+      "default": 4
+     },
+     "threshold": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 1.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Threshold"
+     }
+    },
+    "type": "object",
+    "required": [
+     "query"
+    ],
+    "title": "TestRequest"
+   },
+   "TestResponse": {
+    "properties": {
+     "query": {
+      "type": "string",
+      "title": "Query"
+     },
+     "standalone_query": {
+      "type": "string",
+      "title": "Standalone Query"
+     },
+     "threshold": {
+      "type": "number",
+      "title": "Threshold"
+     },
+     "chunks": {
+      "items": {
+       "$ref": "#/components/schemas/TestChunk"
+      },
+      "type": "array",
+      "title": "Chunks"
+     },
+     "answer": {
+      "type": "string",
+      "title": "Answer"
+     },
+     "outcome": {
+      "type": "string",
+      "title": "Outcome"
+     },
+     "citations": {
+      "items": {
+       "$ref": "#/components/schemas/CitationRead"
+      },
+      "type": "array",
+      "title": "Citations"
+     },
+     "retrieval_ms": {
+      "type": "integer",
+      "title": "Retrieval Ms"
+     },
+     "generation_ms": {
+      "type": "integer",
+      "title": "Generation Ms"
+     },
+     "chunks_in_context": {
+      "type": "integer",
+      "title": "Chunks In Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "query",
+     "standalone_query",
+     "threshold",
+     "chunks",
+     "answer",
+     "outcome",
+     "citations",
+     "retrieval_ms",
+     "generation_ms",
+     "chunks_in_context"
+    ],
+    "title": "TestResponse"
+   },
+   "TopPage": {
+    "properties": {
+     "path": {
+      "type": "string",
+      "title": "Path"
+     },
+     "value": {
+      "type": "integer",
+      "title": "Value"
+     }
+    },
+    "type": "object",
+    "required": [
+     "path",
+     "value"
+    ],
+    "title": "TopPage"
+   },
+   "TopQuestion": {
+    "properties": {
+     "text": {
+      "type": "string",
+      "title": "Text"
+     },
+     "count": {
+      "type": "integer",
+      "title": "Count"
+     },
+     "rate": {
+      "type": "string",
+      "title": "Rate"
+     },
+     "source": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Source"
+     }
+    },
+    "type": "object",
+    "required": [
+     "text",
+     "count",
+     "rate",
+     "source"
+    ],
+    "title": "TopQuestion"
+   },
+   "UrlSourceCreate": {
+    "properties": {
+     "url": {
+      "type": "string",
+      "maxLength": 2048,
+      "minLength": 3,
+      "title": "Url"
+     },
+     "kind": {
+      "type": "string",
+      "enum": [
+       "url",
+       "sitemap"
+      ],
+      "title": "Kind",
+      "default": "url"
+     }
+    },
+    "type": "object",
+    "required": [
+     "url"
+    ],
+    "title": "UrlSourceCreate"
+   },
+   "UserRead": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "email": {
+      "type": "string",
+      "title": "Email"
+     },
+     "email_verified": {
+      "type": "boolean",
+      "title": "Email Verified"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "avatar_url": {
+      "type": "string",
+      "title": "Avatar Url"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "email",
+     "email_verified",
+     "name",
+     "avatar_url"
+    ],
+    "title": "UserRead"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   },
+   "WidgetAppearance": {
+    "properties": {
+     "title": {
+      "type": "string",
+      "maxLength": 60,
+      "title": "Title",
+      "default": "Assistant"
+     },
+     "welcome": {
+      "type": "string",
+      "maxLength": 500,
+      "title": "Welcome",
+      "default": "Hi! Ask me anything."
+     },
+     "placeholder": {
+      "type": "string",
+      "maxLength": 80,
+      "title": "Placeholder",
+      "default": "Ask a question\u2026"
+     },
+     "accent": {
+      "type": "string",
+      "title": "Accent",
+      "default": "#7C3AED"
+     },
+     "position": {
+      "type": "string",
+      "enum": [
+       "right",
+       "left"
+      ],
+      "title": "Position",
+      "default": "right"
+     },
+     "launcher": {
+      "type": "string",
+      "enum": [
+       "chat",
+       "spark",
+       "help"
+      ],
+      "title": "Launcher",
+      "default": "chat"
+     },
+     "suggestions": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "maxItems": 4,
+      "title": "Suggestions"
+     },
+     "show_sources": {
+      "type": "boolean",
+      "title": "Show Sources",
+      "default": true
+     },
+     "show_branding": {
+      "type": "boolean",
+      "title": "Show Branding",
+      "default": true
+     },
+     "theme": {
+      "type": "string",
+      "enum": [
+       "dark",
+       "light"
+      ],
+      "title": "Theme",
+      "default": "dark"
+     }
+    },
+    "type": "object",
+    "title": "WidgetAppearance",
+    "description": "What the widget looks like. Stored as JSONB on the bot; every field has\na default so older rows keep working when a field is added."
+   },
+   "WidgetConfig": {
+    "properties": {
+     "bot_id": {
+      "type": "string",
+      "title": "Bot Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "online": {
+      "type": "boolean",
+      "title": "Online"
+     },
+     "agents_online": {
+      "type": "boolean",
+      "title": "Agents Online",
+      "default": false
+     },
+     "appearance": {
+      "$ref": "#/components/schemas/WidgetAppearance"
+     }
+    },
+    "type": "object",
+    "required": [
+     "bot_id",
+     "name",
+     "status",
+     "online",
+     "appearance"
+    ],
+    "title": "WidgetConfig"
+   }
+  }
+ }
+}

@@ -1,0 +1,29 @@
+.form { display: flex; flex-direction: column; gap: 20px; }
+
+.section {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.section h2 { font-size: 14px; font-weight: 700; }
+
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+.field, .label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.checks { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; }
+
+.check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); cursor: pointer; }
+.check input { width: 16px; height: 16px; }

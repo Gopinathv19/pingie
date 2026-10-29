@@ -1,0 +1,84 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 680px;
+}
+
+.planRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.planName {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.planDesc {
+  font-size: 13px;
+  color: var(--text-3);
+  margin-top: 3px;
+}
+
+.usageGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.usageStat {}
+
+.usageStatHead {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.track {
+  height: 6px;
+  background: var(--surface-2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.limitsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.limitsTable th {
+  text-align: left;
+  padding: 8px 0;
+  color: var(--text-3);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+
+.limitsTable td {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-2);
+}
+
+.limitsTable td:last-child {
+  text-align: right;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.limitsTable tr:last-child td {
+  border-bottom: none;
+}

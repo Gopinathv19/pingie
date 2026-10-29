@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pingie widget test page</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: #f6f6f7;
+        color: #18181b;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 40px 16px;
+      }
+      code {
+        background: #e4e4e7;
+        padding: 1px 5px;
+      }
+      form {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin: 16px 0;
+      }
+      input {
+        padding: 8px;
+        min-width: 240px;
+      }
+      button {
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      /* Hostile host-page CSS: the widget must look the same despite it. */
+      * {
+        letter-spacing: 0.02em;
+      }
+      button {
+        text-transform: uppercase;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Pingie widget test page</h1>
+      <p>
+        A stand-in for a customer's website. Open it as
+        <code>http://localhost:5173/?bot=bot_xxxxxxx</code> (your bot's public ID from the Install page). The bot must have
+        <em>Allow localhost</em> turned on.
+      </p>
+      <p>
+        Add <code>&amp;build=1</code> to test the built <code>dist/widget.js</code> instead of the source, and
+        <code>&amp;api=https://…</code> to point at another backend.
+      </p>
+
+      <form id="bot-form">
+        <input name="bot" placeholder="bot_xxxxxxx" required />
+        <button type="submit">Load bot</button>
+      </form>
+
+      <p>
+        <button type="button" onclick="Pingie.open()">Pingie.open()</button>
+        <button type="button" onclick="Pingie.close()">Pingie.close()</button>
+        <button type="button" onclick="Pingie.ask('What can you help me with?')">Pingie.ask(…)</button>
+        <button type="button" onclick="Pingie.identify({ email: 'jane@acme.com', name: 'Jane Doe' })">Pingie.identify(…)</button>
+        <button type="button" onclick="Pingie.reset()">Pingie.reset()</button>
+      </p>
+    </main>
+
+    <script>
+      const params = new URLSearchParams(location.search);
+      const bot = params.get("bot");
+      document.querySelector("#bot-form input").value = bot || "";
+      document.getElementById("bot-form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        params.set("bot", e.target.bot.value.trim());
+        location.search = params.toString();
+      });
+
+      if (bot) {
+        const s = document.createElement("script");
+        if (params.get("build")) {
+          s.src = "/dist/widget.js";
+        } else {
+          s.type = "module";
+          s.src = "/src/index.ts";
+        }
+        s.dataset.botId = bot;
+        if (params.get("api")) s.dataset.api = params.get("api");
+        document.body.appendChild(s);
+      }
+    </script>
+  </body>
+</html>
