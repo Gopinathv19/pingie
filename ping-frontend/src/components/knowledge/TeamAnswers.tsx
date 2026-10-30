@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { useBot } from "@/components/session/BotProvider";
 import { InlineError } from "@/components/ui/States";
+import { Toggle } from "@/components/ui/Toggle";
 import { api } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
 import type { TeamAnswer } from "@/lib/types";
@@ -43,6 +44,10 @@ export function TeamAnswersDrawer({ onChange, onClose }: { onChange: () => void;
       setEditingId(null);
       refresh();
     }
+  };
+
+  const toggleHelp = (a: TeamAnswer, on: boolean) => {
+    action.run(() => api.answers.helpCenter(bot.id, a.id, on)).then(refresh);
   };
 
   const remove = (a: TeamAnswer) => {
@@ -95,8 +100,24 @@ export function TeamAnswersDrawer({ onChange, onClose }: { onChange: () => void;
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, fontSize: 13 }}>{a.question}</div>
                   <div style={{ fontSize: 13, color: "var(--text-2)", whiteSpace: "pre-wrap", marginTop: 4 }}>{a.answer}</div>
-                  <div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>
-                    Added {relativeTime(a.created_at)}
+                  <div className={s.answerMeta}>
+                    <span>Added {relativeTime(a.created_at)}</span>
+                    {a.kind !== "conversation" && (
+                      <span
+                        className={s.helpCell}
+                        title="Visitors can read this answer in the widget's Help Center. Hide internal notes."
+                      >
+                        {canEdit ? (
+                          <Toggle checked={a.in_help_center} onChange={(on) => toggleHelp(a, on)} label="Show in the Help Center" />
+                        ) : null}
+                        {canEdit ? "Help Center" : a.in_help_center ? "In the Help Center" : "Hidden from the Help Center"}
+                        {(a.helpful > 0 || a.unhelpful > 0) && (
+                          <span className="mono">
+                            · 👍 {a.helpful} · 👎 {a.unhelpful}
+                          </span>
+                        )}
+                      </span>
+                    )}
                   </div>
                 </div>
                 {canEdit && (

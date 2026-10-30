@@ -31,7 +31,9 @@ def list_conversations(
         .where(Conversation.bot_id == bot.id)
     )
     if filter_ == "live":
-        query = query.where(Conversation.status.in_(live_service.LIVE_STATUSES))
+        query = query.where(
+            or_(Conversation.status.in_(live_service.LIVE_STATUSES), live_service.wants_person_clause())
+        )
     elif filter_ == "unanswered":
         query = query.where(Conversation.outcome == "fallback")
     elif filter_ == "down":
@@ -40,6 +42,10 @@ def list_conversations(
         )
     elif filter_ == "handoff":
         query = query.where(Conversation.handoff_email.is_not(None))
+    elif filter_ == "review":
+        query = query.where(Conversation.memory_status == "pending")
+    elif filter_ == "unhappy":
+        query = query.where(Conversation.csat == 1)
     q = q.strip()
     if q:
         like = f"%{q}%"
@@ -105,7 +111,11 @@ def _summary(c: Conversation, v: Visitor, preview: str, agents: dict[uuid.UUID, 
         "handoff_email": c.handoff_email,
         "status": c.status,
         "assigned_to": (agents or {}).get(c.assigned_user_id) if c.assigned_user_id else None,
-        "waiting_since": c.handoff_requested_at if c.status == "waiting" else None,
+        "waiting_since": c.handoff_requested_at if c.status == "waiting" or live_service.wants_person(c) else None,
+        "wants_person": live_service.wants_person(c),
+        "memory_status": c.memory_status,
+        "csat": c.csat,
+        "csat_comment": c.csat_comment,
     }
 
 
@@ -165,12 +175,22 @@ def _export_rows(db: Session, bot_id: uuid.UUID) -> Iterator[str]:
     )
     for c, v, m in rows:
         writer.writerow([
-            c.id, c.created_at.isoformat(), _visitor_label(v), c.page_path, m.role, m.content,
-            m.outcome or "", m.feedback or "",
-            "; ".join(cit.get("source_name", "") for cit in (m.citations or [])),
+            c.id, c.created_at.isoformat(), safe_cell(_visitor_label(v)), safe_cell(c.page_path), m.role,
+            safe_cell(m.content), m.outcome or "", m.feedback or "",
+            safe_cell("; ".join(cit.get("source_name", "") for cit in (m.citations or []))),
             m.created_at.isoformat(),
         ])
         yield flush()
+
+
+_FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
+
+
+def safe_cell(value: str) -> str:
+    """Visitor-written text opened in Excel or Sheets: a cell starting with
+    =, +, -, @ (or a tab/CR before one) would run as a formula, so it's
+    prefixed with ' to be shown as text."""
+    return f"'{value}" if value and value.startswith(_FORMULA_START) else value
 
 
 def clear_history(db: Session, bot: Bot, memora: MemoraClient | None = None) -> int:

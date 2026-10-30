@@ -12,6 +12,7 @@ class OrganizationUsage(BaseModel):
     members_limit: int
     shares_limit: int
     remove_branding: bool
+    custom_design: bool = False
 
 
 class OrganizationRead(BaseModel):

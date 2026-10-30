@@ -244,7 +244,10 @@ export function Topbar({ bot }: { bot?: Bot }) {
                   <span className="dot" style={{ background: "var(--warn)" }} />
                   <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
                     <strong style={{ fontWeight: 600 }}>{w.visitor}</strong>
-                    <span className="subtle" style={{ fontSize: 11 }}>{w.bot_name}</span>
+                    <span className="subtle" style={{ fontSize: 11 }}>
+                      {w.bot_name}
+                      {w.wants_person ? " · wants a person (asked while offline)" : ""}
+                    </span>
                   </span>
                   <span className={s.menuMeta}>{w.waiting_since ? relativeTime(w.waiting_since) : ""}</span>
                 </Link>

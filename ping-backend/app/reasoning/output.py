@@ -12,9 +12,13 @@ from dataclasses import dataclass, field
 
 from app.reasoning.prompts import NO_ANSWER, PARTIAL
 
-_CITATION_PREFIX = re.compile(r"\[([1-9]\d?)\]")
+# [1], and the forms models also use: [1, 2], [1-3], [^1].
+_CITATION_PREFIX = re.compile(r"\[\^?([1-9]\d?(?:\s*[,\u2013-]\s*[1-9]\d?)*)\]")
 # An unclosed "[" longer than this is ordinary text, not a marker.
 _MAX_MARKER = len(PARTIAL)
+# A NO_ANSWER after this much real text is a hedge inside an answer (partial);
+# with less, the reply was a refusal with filler ("Sorry, I don't know.").
+_MIN_ANSWER_CHARS = 40
 
 
 @dataclass
@@ -38,6 +42,7 @@ class AnswerFilter:
         self._shown: list[str] = []
         self._started = False    # past the NO_ANSWER check
         self.no_answer = False
+        self.late_no_answer = False  # NO_ANSWER after some text: never shown
         self.partial = False
         self.cited: list[int] = []
 
@@ -49,7 +54,8 @@ class AnswerFilter:
     def push(self, delta: str) -> str:
         if self.no_answer:
             return ""
-        self._pending += delta
+        # Some models cite with full-width brackets (【1】); treat them as [1].
+        self._pending += delta.replace("\u3010", "[").replace("\u3011", "]")
         if not self._started:
             head = self._pending.lstrip()
             if len(head) < len(NO_ANSWER) and NO_ANSWER.startswith(head):
@@ -72,13 +78,24 @@ class AnswerFilter:
                 self._started = True
                 self._drain(final=True)
         text = _tidy("".join(self._shown))
-        if self.no_answer or not text:
+        if self.late_no_answer:
+            text = re.sub(r"[\s:\u2013-]+$", "", text)  # "Volume pricing:" lost its NO_ANSWER
+        if self.no_answer or not text or (self.late_no_answer and len(text) < _MIN_ANSWER_CHARS):
             return FilteredAnswer(text="", outcome="fallback")
-        return FilteredAnswer(text=text, outcome="partial" if self.partial else "answered", cited=self.cited)
+        partial = self.partial or self.late_no_answer
+        return FilteredAnswer(text=text, outcome="partial" if partial else "answered", cited=self.cited)
 
     def _drain(self, final: bool) -> str:
         out = []
         buf = self._pending
+        # NO_ANSWER later in the reply: drop it (finish() decides the outcome),
+        # and hold a tail that may still become one ("...NO_ANS").
+        if NO_ANSWER in buf:
+            self.late_no_answer = True
+            buf = buf.replace(NO_ANSWER, "")
+        held = "" if final else _no_answer_tail(buf)
+        if held:
+            buf = buf[: -len(held)]
         while buf:
             start = buf.find("[")
             if start == -1:
@@ -99,9 +116,9 @@ class AnswerFilter:
                 # "Billing [1]." should read "Billing." -- drop the space before.
                 if out:
                     out[-1] = out[-1].rstrip(" \t")
-                n = int(match.group(1))
-                if n not in self.cited:
-                    self.cited.append(n)
+                for n in _numbers(match.group(1)):
+                    if n not in self.cited:
+                        self.cited.append(n)
                 buf = buf[match.end():]
                 continue
             # An ordinary bracket.
@@ -113,14 +130,36 @@ class AnswerFilter:
             stripped = text.rstrip(" \t")
             buf = text[len(stripped):] + buf
             text = stripped
-        self._pending = buf
+        self._pending = buf + held
         self._shown.append(text)
         return text
 
 
 def _could_cite(buf: str) -> bool:
-    """`[`, `[1`, `[12` can still become a citation."""
-    return bool(re.fullmatch(r"\[(?:[1-9]\d?)?", buf))
+    """`[`, `[1`, `[1, 2`, `[1-`, `[^` can still become a citation."""
+    return bool(re.fullmatch(r"\[\^?(?:[1-9]\d?(?:\s*[,\u2013-]\s*(?:[1-9]\d?)?)*)?", buf))
+
+
+def _numbers(group: str) -> list[int]:
+    """ "1, 2" -> [1, 2]; "1-3" -> [1, 2, 3] (a range is capped at 10 passages)."""
+    out: list[int] = []
+    for part in re.split(r"\s*,\s*", group.strip()):
+        span = re.fullmatch(r"(\d+)\s*[\u2013-]\s*(\d+)", part)
+        if span:
+            a, b = int(span.group(1)), int(span.group(2))
+            out.extend(range(a, min(b, a + 9) + 1) if b >= a else [a])
+        else:
+            out.append(int(part))
+    return out
+
+
+def _no_answer_tail(buf: str) -> str:
+    """The end of `buf` that is the start of NO_ANSWER, so a marker split
+    across deltas is never shown in pieces."""
+    for n in range(min(len(NO_ANSWER) - 1, len(buf)), 0, -1):
+        if NO_ANSWER.startswith(buf[-n:]):
+            return buf[-n:]
+    return ""
 
 
 def _tidy(text: str) -> str:

@@ -13,6 +13,7 @@ from sqlalchemy import and_, case, distinct, func, select
 from sqlalchemy.orm import Session, aliased
 
 from app.db.models import Bot, BotSource, Conversation, Lead, Message
+from app.services import help_service
 
 _RANGES = {
     # range: (length, bucket unit, bucket step, label format)
@@ -86,9 +87,23 @@ def overview(db: Session, bot: Bot, range_: str) -> dict:
         leads = db.scalar(
             select(func.count(Lead.id)).where(Lead.bot_id == bot.id, Lead.created_at >= lo, Lead.created_at < hi)
         ) or 0
+        csat = db.execute(
+            select(
+                func.count(Conversation.id),
+                func.sum(case((Conversation.csat == 3, 1), else_=0)),
+                func.sum(case((Conversation.csat == 1, 1), else_=0)),
+            ).where(
+                Conversation.bot_id == bot.id, Conversation.csat.is_not(None),
+                Conversation.csat_at >= lo, Conversation.csat_at < hi,
+            )
+        ).one()
         reasoned, resolved = int(msg[1] or 0), int(msg[2] or 0)
         rated, down = int(msg[4] or 0), int(msg[5] or 0)
+        csat_n, happy, unhappy = (int(x or 0) for x in csat)
         return {
+            "csat_n": csat_n,
+            "csat": 100 * happy / csat_n if csat_n else 0.0,
+            "unhappy": unhappy,
             "messages": int(msg[0] or 0),
             "reasoned": reasoned,
             "resolution": 100 * resolved / reasoned if reasoned else 0.0,
@@ -109,7 +124,10 @@ def overview(db: Session, bot: Bot, range_: str) -> dict:
         kpis.append({"key": key, "label": label, "value": value, "delta": delta_tone[0], "tone": delta_tone[1], "sub": sub})
 
     kpi("conversations", "Conversations", f"{cur['conversations']:,}", _pct_delta(cur["conversations"], prev["conversations"]), "Chats started by visitors")
-    kpi("messages", "Messages", f"{cur['messages']:,}", _pct_delta(cur["messages"], prev["messages"]), "Visitor + bot")
+    # Satisfaction replaced the Messages KPI; message volume is on the Messages chart.
+    kpi("satisfaction", "Satisfaction", f"{round(cur['csat'])}%" if cur["csat_n"] else "—",
+        _pts_delta(cur["csat"], prev["csat"]) if cur["csat_n"] and prev["csat_n"] else ("—", "flat"),
+        f"{cur['csat_n']} rating{'s' if cur['csat_n'] != 1 else ''} · {cur['unhappy']} unhappy" if cur["csat_n"] else "Happy ratings of chats")
     kpi("resolution", "Resolution rate", f"{round(cur['resolution'])}%" if cur["reasoned"] else "—",
         _pts_delta(cur["resolution"], prev["resolution"]) if prev["reasoned"] and cur["reasoned"] else ("—", "flat"),
         "Answered without fallback")
@@ -240,6 +258,7 @@ def overview(db: Session, bot: Bot, range_: str) -> dict:
         "messages_14d": sum(messages_per_day),
         "top_pages": top_pages,
         "knowledge_gaps": [gap_text[k] for k, _ in gaps.most_common(5)],
+        "unhelpful_articles": help_service.most_unhelpful(db, bot),
         "unanswered_count": outcome_counts.get("fallback", 0),
         "top_questions": top_questions,
     }

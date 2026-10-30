@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, BackgroundTasks, File, UploadFile, status
 
 from app.api.deps import CurrentBot, DbSession, EditableBot, Memora, ReasonerDep
-from app.schemas.source import SourceList, SourceRead, UrlSourceCreate
+from app.schemas.source import HelpCenterToggle, SourceList, SourceRead, UrlSourceCreate
 from app.schemas.test import TestRequest, TestResponse
 from app.services import source_service, test_service
 
@@ -38,6 +38,13 @@ def resync(source_id: uuid.UUID, background: BackgroundTasks, bot: EditableBot, 
     if row.type in ("url", "sitemap"):
         background.add_task(source_service.process_web_source, row.id)
     return source_service.to_read(row)
+
+
+@router.put("/sources/{source_id}/help-center", response_model=SourceRead)
+def help_center(source_id: uuid.UUID, payload: HelpCenterToggle, bot: EditableBot, db: DbSession):
+    """Show or hide this source in the widget's Help Center."""
+    row = source_service.set_help_center(db, bot, source_id, payload.in_help_center)
+    return source_service.to_read(row, source_service._child_help_stats(db, [row.id]).get(row.id))
 
 
 @router.delete("/sources/{source_id}", status_code=status.HTTP_204_NO_CONTENT)

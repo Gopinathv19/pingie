@@ -22,6 +22,7 @@ async function updatePlanAction(orgId: string, formData: FormData) {
         members_limit: num("members_limit"),
         shares_limit: num("shares_limit"),
         remove_branding: formData.get("remove_branding") === "on",
+        custom_design: formData.get("custom_design") === "on",
       }
     : { plan };
 
@@ -122,6 +123,10 @@ export default async function OrgDetailPage({
           <div className={s.checkRow}>
             <input type="checkbox" id="remove_branding" name="remove_branding" defaultChecked={org.remove_branding} />
             <label htmlFor="remove_branding">Allow removing &ldquo;Powered by Pingie&rdquo; branding</label>
+          </div>
+          <div className={s.checkRow}>
+            <input type="checkbox" id="custom_design" name="custom_design" defaultChecked={org.custom_design} />
+            <label htmlFor="custom_design">Allow custom widget design (layouts, logo, gradients, corners, fonts)</label>
           </div>
 
           <div style={{ display: "flex", gap: 10, marginTop: 8 }}>

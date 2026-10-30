@@ -56,7 +56,10 @@ def require_member(db: Session, user: Users, organization_id: uuid.UUID) -> tupl
     row = db.execute(
         select(Organization, OrganizationMember.role)
         .join(OrganizationMember, OrganizationMember.organization_id == Organization.id)
-        .where(Organization.id == organization_id, OrganizationMember.user_id == user.id)
+        .where(
+            Organization.id == organization_id, OrganizationMember.user_id == user.id,
+            Organization.status == "active",  # a suspended workspace is out of reach
+        )
     ).first()
     if row is None:
         raise NotFoundError("Organization not found")
@@ -95,6 +98,7 @@ def usage(db: Session, org: Organization) -> dict:
         "members_limit": org.members_limit,
         "shares_limit": org.shares_limit,
         "remove_branding": org.remove_branding,
+        "custom_design": org.custom_design,
     }
 
 

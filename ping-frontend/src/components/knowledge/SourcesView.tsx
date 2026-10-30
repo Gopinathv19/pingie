@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Panel } from "@/components/ui/Panel";
 import { ErrorState, InlineError, Loading } from "@/components/ui/States";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Toggle } from "@/components/ui/Toggle";
 import { api } from "@/lib/api";
 import { bytes, relativeTime, shortDate } from "@/lib/format";
 import { botHref } from "@/lib/nav";
@@ -36,6 +37,32 @@ function sizeLabel(src: Source) {
 
 /** The source holding answers taught by the team (backend answer_service.SOURCE_NAME). */
 const isTeamAnswers = (src: Source) => src.type === "text" && src.name === "Team answers";
+
+/** The widget's Help Center lists web pages and text files; PDF and DOCX stay answer-only. */
+function HelpCenterCell({ src, busy, onToggle }: { src: Source; busy: boolean; onToggle: (on: boolean) => void }) {
+  if (isTeamAnswers(src) || src.type === "pdf" || src.type === "docx") {
+    return <span className="subtle" title="Only web pages and text files can be read in the Help Center">—</span>;
+  }
+  if (!src.readable) {
+    return (
+      <span className="subtle" style={{ fontSize: 12 }} title="Pages crawled before the Help Center existed have no readable copy yet">
+        {src.status === "ready" ? "Re-sync to list" : "After indexing"}
+      </span>
+    );
+  }
+  return (
+    <span className={s.helpCell}>
+      <span style={busy ? { pointerEvents: "none" } : undefined}>
+        <Toggle checked={src.in_help_center} onChange={onToggle} label={`Show ${src.name} in the Help Center`} />
+      </span>
+      {(src.helpful > 0 || src.unhelpful > 0) && (
+        <span className="subtle mono" style={{ fontSize: 11 }} title="Visitors who said it answered / didn't answer their question">
+          👍 {src.helpful} · 👎 {src.unhelpful}
+        </span>
+      )}
+    </span>
+  );
+}
 
 export function SourcesView() {
   const { bot, reload: reloadBot } = useBot();
@@ -253,6 +280,7 @@ export function SourcesView() {
                   <th style={{ textAlign: "right" }}>Chunks</th>
                   <th style={{ textAlign: "right" }}>Size</th>
                   <th>Updated</th>
+                  <th title="Visitors can read it in the widget's Help Center">Help Center</th>
                   <th style={{ textAlign: "right" }}>
                     <span className="sr-only">Actions</span>
                   </th>
@@ -296,6 +324,13 @@ export function SourcesView() {
                     <td className="num subtle">{sizeLabel(src)}</td>
                     <td className="subtle" style={{ fontSize: 12, whiteSpace: "nowrap" }}>
                       {shortDate(src.updated_at)}
+                    </td>
+                    <td>
+                      <HelpCenterCell
+                        src={src}
+                        busy={busyIds.has(src.id)}
+                        onToggle={(on) => onRow(src.id, () => api.sources.helpCenter(bot.id, src.id, on))}
+                      />
                     </td>
                     <td>
                       <div className={s.actions}>

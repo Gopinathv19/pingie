@@ -14,6 +14,8 @@ import type {
   ConversationFilter,
   ConversationSummary,
   KnowledgeDraftItem,
+  MemoryMode,
+  MemoryStatus,
   MessageOutcome,
 } from "@/lib/types";
 import { useAction, useApi } from "@/lib/use-api";
@@ -25,7 +27,11 @@ const FILTERS: { key: ConversationFilter; label: string }[] = [
   { key: "unanswered", label: "Unanswered" },
   { key: "down", label: "Disliked" },
   { key: "handoff", label: "Handoffs" },
+  { key: "unhappy", label: "Unhappy" },
 ];
+
+// Shown only when the bot learns from chats, or chats are still waiting.
+const REVIEW_FILTER: { key: ConversationFilter; label: string } = { key: "review", label: "To review" };
 
 const outcomeBadge: Record<MessageOutcome, { label: string; cls: string }> = {
   answered: { label: "Answered", cls: "badge-ok" },
@@ -38,7 +44,20 @@ const outcomeBadge: Record<MessageOutcome, { label: string; cls: string }> = {
 
 const LIVE: ChatStatus[] = ["waiting", "human"];
 
-function StatusPill({ status, assignedTo, since }: { status: ChatStatus; assignedTo: string | null; since: string | null }) {
+function StatusPill({
+  status,
+  assignedTo,
+  since,
+  wantsPerson = false,
+}: {
+  status: ChatStatus;
+  assignedTo: string | null;
+  since: string | null;
+  wantsPerson?: boolean;
+}) {
+  if (wantsPerson) {
+    return <span className={`${s.pill} ${s.pillWaiting}`}>Wants a person{since ? ` · ${relativeTime(since)}` : ""}</span>;
+  }
   if (status === "waiting") {
     return <span className={`${s.pill} ${s.pillWaiting}`}>Waiting{since ? ` · ${relativeTime(since)}` : ""}</span>;
   }
@@ -59,8 +78,12 @@ export function ConversationsView() {
 
   // ?c=<id> opens a conversation directly (links from notifications and the Live menu).
   useEffect(() => {
-    const c = new URLSearchParams(window.location.search).get("c");
+    const params = new URLSearchParams(window.location.search);
+    const c = params.get("c");
     if (c) setSelectedId(c);
+    // ?filter=review comes from Bot settings ("N waiting for review").
+    const f = params.get("filter");
+    if (f && (f === REVIEW_FILTER.key || FILTERS.some((x) => x.key === f))) setFilter(f as ConversationFilter);
   }, []);
 
   useEffect(() => {
@@ -112,7 +135,10 @@ export function ConversationsView() {
               aria-label="Search conversations"
             />
             <div role="group" aria-label="Filter" className="segmented" style={{ width: "100%" }}>
-              {FILTERS.map((f) => (
+              {[
+                ...FILTERS,
+                ...(bot.memory_mode !== "manual" || (bot.memory?.pending ?? 0) > 0 ? [REVIEW_FILTER] : []),
+              ].map((f) => (
                 <button key={f.key} type="button" style={{ flex: "1 1 auto", padding: "0 6px", minWidth: 0 }} aria-pressed={f.key === filter} onClick={() => setFilter(f.key)}>
                   {f.label}
                 </button>
@@ -136,7 +162,7 @@ export function ConversationsView() {
                 <button
                   key={c.id}
                   type="button"
-                  className={`${s.item} ${openId === c.id ? s.itemActive : ""} ${c.status === "waiting" ? s.itemWaiting : ""}`}
+                  className={`${s.item} ${openId === c.id ? s.itemActive : ""} ${c.status === "waiting" || c.wants_person ? s.itemWaiting : ""}`}
                   onClick={() => setSelectedId(c.id)}
                 >
                   <span className={s.itemHead}>
@@ -148,7 +174,9 @@ export function ConversationsView() {
                   </span>
                   <span className={s.itemPreview}>{c.preview || "—"}</span>
                   <span className={s.itemMeta}>
-                    <StatusPill status={c.status} assignedTo={c.assigned_to} since={c.waiting_since} />
+                    <StatusPill status={c.status} assignedTo={c.assigned_to} since={c.waiting_since} wantsPerson={c.wants_person} />
+                    <MemoryPill status={c.memory_status} />
+                    <CsatPill score={c.csat} />
                     <span className={`badge ${b.cls}`}>{b.label}</span>
                     {c.message_count} msgs
                   </span>
@@ -235,6 +263,94 @@ function needsTeaching(m: ChatMessage): boolean {
   return m.role === "bot" && (m.outcome === "fallback" || m.feedback === "down");
 }
 
+const CSAT: Record<1 | 2 | 3, { face: string; label: string; cls: string }> = {
+  1: { face: "😞", label: "Unhappy", cls: s.pillUnhappy },
+  2: { face: "😐", label: "Okay", cls: "" },
+  3: { face: "😀", label: "Happy", cls: s.pillHappy },
+};
+
+/** How the visitor rated the whole chat (the widget's "How was your chat?"). */
+function CsatPill({ score }: { score: 1 | 2 | 3 | null }) {
+  if (!score) return null;
+  const c = CSAT[score];
+  return (
+    <span className={`${s.pill} ${c.cls}`} title={`Visitor rated this chat: ${c.label}`}>
+      {c.face} {c.label}
+    </span>
+  );
+}
+
+function MemoryPill({ status }: { status: MemoryStatus | null }) {
+  if (status === "pending") return <span className={`${s.pill} ${s.pillReview}`}>To review</span>;
+  if (status === "learned") return <span className={`${s.pill} ${s.pillLearned}`}>Learned</span>;
+  return null;
+}
+
+/** Whether, and how, the bot learns from this chat (Bot settings → Learning). */
+function MemoryBar({
+  c,
+  botId,
+  mode,
+  onEdit,
+  onChange,
+}: {
+  c: ConversationDetail;
+  botId: string;
+  mode: MemoryMode;
+  onEdit: () => void;
+  onChange: () => void;
+}) {
+  const action = useAction();
+  const teamReplied = c.messages.some((m) => m.role === "agent");
+  const finished = !LIVE.includes(c.status);
+  const go = (fn: () => Promise<unknown>) => action.run(fn).then(onChange);
+
+  if (c.memory_status === "pending") {
+    return (
+      <div className={s.memoryBar} role="status">
+        <Icon name="spark" size={14} />
+        <span className={s.memoryText}>
+          <strong>Learn from this chat?</strong> Only the team&apos;s replies are kept, without emails or phone numbers.
+        </span>
+        <button type="button" className="btn btn-sm btn-primary" disabled={action.busy} onClick={() => go(() => api.memory.approve(botId, c.id))}>
+          Learn from this chat
+        </button>
+        <button type="button" className="btn btn-sm" disabled={action.busy} onClick={onEdit}>
+          Edit first
+        </button>
+        <button type="button" className="btn btn-sm" disabled={action.busy} onClick={() => go(() => api.memory.skip(botId, c.id))}>
+          Skip
+        </button>
+        <InlineError message={action.error} />
+      </div>
+    );
+  }
+  if (c.memory_status === "learned") {
+    return (
+      <div className={`${s.memoryBar} ${s.memoryBarQuiet}`}>
+        <span className={s.memoryText}>The bot learned from this chat.</span>
+        <button type="button" className={s.teachBtn} disabled={action.busy} onClick={() => go(() => api.memory.skip(botId, c.id))}>
+          Forget it
+        </button>
+        <InlineError message={action.error} />
+      </div>
+    );
+  }
+  // Not considered yet, or skipped: offer it by hand, outside Manual only.
+  if (mode === "manual" || !teamReplied || !finished) return null;
+  return (
+    <div className={`${s.memoryBar} ${s.memoryBarQuiet}`}>
+      <span className={s.memoryText}>
+        {c.memory_status === "skipped" ? "The bot isn't learning from this chat." : "The bot hasn't learned from this chat."}
+      </span>
+      <button type="button" className={s.teachBtn} disabled={action.busy} onClick={() => go(() => api.memory.approve(botId, c.id))}>
+        Learn from this chat
+      </button>
+      <InlineError message={action.error} />
+    </div>
+  );
+}
+
 function lastVisitorQuestion(c: ConversationDetail): string {
   for (let j = c.messages.length - 1; j >= 0; j--) if (c.messages[j].role === "visitor") return c.messages[j].content;
   return "";
@@ -259,6 +375,7 @@ function TranscriptBody({
   const action = useAction();
   const [teachFor, setTeachFor] = useState<string | null>(null);
   const [knowledgeOpen, setKnowledgeOpen] = useState(false);
+  const [skipAfterSave, setSkipAfterSave] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
   const live = LIVE.includes(c.status);
@@ -286,7 +403,9 @@ function TranscriptBody({
           </span>
         </div>
         <div className={s.actions}>
-          <StatusPill status={c.status} assignedTo={c.assigned_to} since={c.waiting_since} />
+          <StatusPill status={c.status} assignedTo={c.assigned_to} since={c.waiting_since} wantsPerson={c.wants_person} />
+          <MemoryPill status={c.memory_status} />
+          <CsatPill score={c.csat} />
           <span className={`badge ${b.cls}`}>{b.label}</span>
           {canEdit && (
             <>
@@ -304,7 +423,7 @@ function TranscriptBody({
               {(!live || c.status === "waiting") && (
                 <button type="button" className="btn btn-sm btn-primary" disabled={action.busy} onClick={() => run(() => api.conversations.takeover(botId, c.id))}>
                   <Icon name="conversations" size={13} />
-                  {c.status === "waiting" ? "Join chat" : "Take over"}
+                  {c.status === "waiting" || c.wants_person ? "Join chat" : "Take over"}
                 </button>
               )}
               {live && (
@@ -332,6 +451,19 @@ function TranscriptBody({
       </div>
       <InlineError message={action.error} />
 
+      {canEdit && !knowledgeOpen && (
+        <MemoryBar
+          c={c}
+          botId={botId}
+          mode={bot.memory_mode}
+          onEdit={() => {
+            setSkipAfterSave(true);
+            setKnowledgeOpen(true);
+          }}
+          onChange={onStatus}
+        />
+      )}
+
       {knowledgeOpen && canEdit && (
         <div className={s.knowledgePanel}>
           <TeachForm
@@ -339,8 +471,14 @@ function TranscriptBody({
             conversationId={c.id}
             question={lastVisitorQuestion(c)}
             live={live}
+            onSaved={() => {
+              // "Edit first" from the review bar: the edited copy replaces learning
+              // this chat as is, so it isn't learned twice.
+              if (skipAfterSave && c.memory_status === "pending") void api.memory.skip(botId, c.id).then(onStatus);
+            }}
             onDone={(replied) => {
               setKnowledgeOpen(false);
+              setSkipAfterSave(false);
               if (replied) onStatus();
             }}
           />
@@ -355,12 +493,21 @@ function TranscriptBody({
         </div>
       )}
 
+      {c.wants_person && (
+        <div className={s.waitingBanner} role="status">
+          <Icon name="help" size={14} />
+          This visitor asked for a person {c.waiting_since ? relativeTime(c.waiting_since) : ""} while nobody was online.
+          {c.handoff_email ? ` Reply here or email them at ${c.handoff_email}.` : " Reply here; they'll see it in the widget."}
+        </div>
+      )}
+
       <div className={s.metaStrip}>
         {[
           ["Started", dayTime(c.started_at)],
           ["Duration", duration(c.duration_seconds)],
           ["Page", c.page],
           ["Location", c.location || "—"],
+          ...(c.csat ? [["Rating", `${CSAT[c.csat].face} ${CSAT[c.csat].label}${c.csat_comment ? ` · “${c.csat_comment}”` : ""}`]] : []),
         ].map(([label, value]) => (
           <div key={label} className={s.metaCell}>
             <span className={s.metaLabel}>{label}</span>
@@ -479,10 +626,33 @@ function Composer({ botId, c, onSent }: { botId: string; c: ConversationDetail; 
   const taRef = useRef<HTMLTextAreaElement>(null);
   const action = useAction();
   const live = LIVE.includes(c.status);
+  const replies = useApi(() => api.savedReplies.list(botId), [botId]);
+  // Saved-reply picker: opened by "/" at the start of the box, or the button.
+  const [picker, setPicker] = useState<{ query: string; index: number } | null>(null);
+  const matches = (replies.data ?? []).filter((r) => {
+    const q = (picker?.query ?? "").toLowerCase();
+    return !q || r.title.toLowerCase().includes(q) || r.body.toLowerCase().includes(q);
+  });
+
+  const resize = (el: HTMLTextAreaElement) => {
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+  };
+  const insert = (body: string) => {
+    setText(body);
+    setPicker(null);
+    requestAnimationFrame(() => {
+      const el = taRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(body.length, body.length);
+      resize(el);
+    });
+  };
 
   const send = useCallback(async () => {
     const value = text.trim();
-    if (!value) return;
+    if (!value || value === "/") return;
     const m = await action.run(() => api.conversations.reply(botId, c.id, value));
     if (m) {
       setText("");
@@ -494,18 +664,65 @@ function Composer({ botId, c, onSent }: { botId: string; c: ConversationDetail; 
   return (
     <div className={s.composer}>
       <InlineError message={action.error} />
+      {picker && (
+        <div className={s.picker} role="listbox" aria-label="Saved replies">
+          {matches.length === 0 ? (
+            <div className={s.pickerEmpty}>
+              {(replies.data ?? []).length === 0 ? "No saved replies yet. Add them in Bot settings → Saved replies." : "No saved reply matches."}
+            </div>
+          ) : (
+            matches.slice(0, 8).map((r, i) => (
+              <button
+                key={r.id}
+                type="button"
+                role="option"
+                aria-selected={i === picker.index}
+                className={`${s.pickerItem} ${i === picker.index ? s.pickerActive : ""}`}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  insert(r.body);
+                }}
+              >
+                <strong>{r.title}</strong>
+                <span>{r.body}</span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
       <div className={s.composerBox}>
         <textarea
           ref={taRef}
           rows={1}
-          placeholder={live ? "Reply to the visitor…" : "Reply to take over from the bot…"}
+          placeholder={live ? "Reply to the visitor…  (type / for saved replies)" : "Reply to take over from the bot…  (type / for saved replies)"}
           value={text}
           onChange={(e) => {
-            setText(e.target.value);
-            e.target.style.height = "auto";
-            e.target.style.height = `${Math.min(e.target.scrollHeight, 140)}px`;
+            const v = e.target.value;
+            setText(v);
+            resize(e.target);
+            setPicker(v.startsWith("/") && !v.includes("\n") ? { query: v.slice(1), index: 0 } : null);
           }}
+          onBlur={() => setPicker(null)}
           onKeyDown={(e) => {
+            if (picker && matches.length > 0) {
+              const shown = Math.min(matches.length, 8);
+              if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                e.preventDefault();
+                setPicker({ ...picker, index: (picker.index + (e.key === "ArrowDown" ? 1 : shown - 1)) % shown });
+                return;
+              }
+              if (e.key === "Enter" || e.key === "Tab") {
+                e.preventDefault();
+                insert(matches[picker.index].body);
+                return;
+              }
+            }
+            if (picker && (e.key === "Escape" || (e.key === "Enter" && matches.length === 0))) {
+              // Nothing to pick: close the list rather than sending "/…" by accident.
+              e.preventDefault();
+              setPicker(null);
+              return;
+            }
             if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
               void send();
@@ -513,14 +730,27 @@ function Composer({ botId, c, onSent }: { botId: string; c: ConversationDetail; 
           }}
           aria-label="Reply"
         />
+        <button
+          type="button"
+          className={s.pickerBtn}
+          title="Saved replies"
+          aria-label="Saved replies"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            setPicker(picker ? null : { query: "", index: 0 });
+            taRef.current?.focus();
+          }}
+        >
+          <Icon name="file" size={15} />
+        </button>
         <button type="button" className={s.sendBtn} disabled={action.busy || !text.trim()} onClick={send} aria-label="Send reply">
           <Icon name="send" size={15} />
         </button>
       </div>
       <span className={s.composerHint}>
         {live
-          ? "Enter to send · Shift+Enter for a new line. The visitor sees your reply within a few seconds."
-          : "Sending pauses the bot until you hand the chat back."}
+          ? "Enter to send · Shift+Enter for a new line · / for saved replies. The visitor sees your reply within a few seconds."
+          : "Sending pauses the bot until you hand the chat back. Type / for saved replies."}
       </span>
     </div>
   );
@@ -542,6 +772,7 @@ function TeachForm({
   answer: initialAnswer = "",
   initialMode = "transcript",
   live,
+  onSaved,
   onDone,
 }: {
   botId: string;
@@ -550,6 +781,7 @@ function TeachForm({
   answer?: string;
   initialMode?: KnowledgeMode;
   live: boolean;
+  onSaved?: () => void;
   onDone: (replied: boolean) => void;
 }) {
   const { bot } = useBot();
@@ -606,6 +838,7 @@ function TeachForm({
     });
     if (r) {
       setSaved(r);
+      onSaved?.();
       setTimeout(() => onDone(mode === "answer" && alsoReply), 1800);
     }
   };

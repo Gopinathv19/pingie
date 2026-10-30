@@ -18,6 +18,7 @@ export function parsePlanForm(formData: FormData): PlanValues {
     members_limit: int("members_limit"),
     shares_limit: int("shares_limit"),
     remove_branding: on("remove_branding"),
+    custom_design: on("custom_design"),
     model_tiers: MODEL_TIERS.filter((t) => on(`tier_${t}`)),
     features: str("features").split("\n").map((f) => f.trim()).filter(Boolean),
     is_public: on("is_public"),
@@ -40,6 +41,7 @@ const BLANK: Omit<AdminPlan, "id" | "created_at" | "updated_at"> = {
   members_limit: 1,
   shares_limit: 3,
   remove_branding: false,
+  custom_design: false,
   model_tiers: ["fast"],
   features: [],
   is_public: true,
@@ -127,6 +129,9 @@ export function PlanForm({
         </div>
         <label className={s.check}>
           <input type="checkbox" name="remove_branding" defaultChecked={p.remove_branding} /> Can remove &ldquo;Powered by Pingie&rdquo; badge
+        </label>
+        <label className={s.check}>
+          <input type="checkbox" name="custom_design" defaultChecked={p.custom_design} /> Custom widget design (layouts, logo, gradients, corners, fonts)
         </label>
       </section>
 

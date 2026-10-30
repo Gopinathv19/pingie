@@ -43,6 +43,28 @@ class Bot(UUIDPrimaryKey, TimestampCreated, TimestampUpdated, Base):
     collect_email: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
     handoff_email: Mapped[str] = mapped_column(String(320), nullable=False, server_default="")
     offline_message: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    # When a visitor asks for a person: "instant" hands over at once, "offer"
+    # replies with a "Talk to a person" button, "bot_first" answers as usual
+    # with the button under it. Asking again (or the button) always hands over.
+    handoff_mode: Mapped[str] = mapped_column(String(16), nullable=False, server_default="offer")
+    # How the bot learns from finished chats a teammate answered
+    # (app/services/memory_service.py): "manual" only through Save as
+    # knowledge, "review" after a teammate approves each chat, "auto" by itself.
+    memory_mode: Mapped[str] = mapped_column(String(16), nullable=False, server_default="manual")
+    # How cautious answers are: strict | balanced | helpful (pipeline rerank floor + one prompt rule).
+    answer_strictness: Mapped[str] = mapped_column(String(16), nullable=False, server_default="balanced")
+    # Decline questions that aren't about this bot's business (chat_service._off_topic).
+    topic_guard: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    blocked_topics: Mapped[str] = mapped_column(Text, nullable=False, server_default="")  # one per line
+    off_topic_message: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    # {"enabled", "timezone", "days": {"mon": [["09:00", "18:00"]], ...}}; {} = no hours set.
+    business_hours: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
+    # Where to post alerts (app/services/alert_service.py), and for which events.
+    alert_slack_url: Mapped[str] = mapped_column(String(512), nullable=False, server_default="")
+    alert_webhook_url: Mapped[str] = mapped_column(String(512), nullable=False, server_default="")
+    alert_events: Mapped[list] = mapped_column(
+        JSONB, nullable=False, server_default='["wants_person", "lead", "disliked"]'
+    )
     # The single "Team answers" source that holds answers taught from the inbox.
     # No FK: bot_sources already references bots, and a deleted row is detected.
     faq_source_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)

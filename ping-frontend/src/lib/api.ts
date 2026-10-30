@@ -13,6 +13,8 @@ import type {
   LiveSummary,
   TeamAnswer,
   KnowledgeDraftItem,
+  MemoryStatus,
+  SavedReply,
   Domain,
   InstallInfo,
   Lead,
@@ -163,6 +165,24 @@ export const api = {
     presence: (available: boolean) => request<void>("/me/presence", json("POST", { available })),
     summary: () => request<LiveSummary>("/me/live"),
   },
+  savedReplies: {
+    list: (botId: string) => request<SavedReply[]>(`/bots/${botId}/saved-replies`),
+    add: (botId: string, data: { title: string; body: string }) =>
+      request<SavedReply>(`/bots/${botId}/saved-replies`, json("POST", data)),
+    update: (botId: string, id: string, data: { title?: string; body?: string }) =>
+      request<SavedReply>(`/bots/${botId}/saved-replies/${id}`, json("PATCH", data)),
+    remove: (botId: string, id: string) => request<void>(`/bots/${botId}/saved-replies/${id}`, json("DELETE")),
+  },
+  alerts: {
+    test: (botId: string) => request<{ results: Record<string, number | string> }>(`/bots/${botId}/alerts/test`, json("POST")),
+  },
+  memory: {
+    approve: (botId: string, conversationId: string) =>
+      request<{ memory_status: MemoryStatus }>(`/bots/${botId}/conversations/${conversationId}/memory/approve`, json("POST")),
+    skip: (botId: string, conversationId: string) =>
+      request<{ memory_status: MemoryStatus }>(`/bots/${botId}/conversations/${conversationId}/memory/skip`, json("POST")),
+    forget: (botId: string) => request<{ forgotten: number }>(`/bots/${botId}/memory/forget`, json("POST")),
+  },
   answers: {
     list: (botId: string) => request<TeamAnswer[]>(`/bots/${botId}/answers`),
     add: (
@@ -184,6 +204,8 @@ export const api = {
     update: (botId: string, id: string, data: { question: string; answer: string }) =>
       request<TeamAnswer>(`/bots/${botId}/answers/${id}`, json("PATCH", data)),
     remove: (botId: string, id: string) => request<void>(`/bots/${botId}/answers/${id}`, json("DELETE")),
+    helpCenter: (botId: string, id: string, on: boolean) =>
+      request<TeamAnswer>(`/bots/${botId}/answers/${id}/help-center`, json("PUT", { in_help_center: on })),
   },
   sources: {
     list: (botId: string) => request<SourceList>(`/bots/${botId}/sources`),
@@ -196,6 +218,8 @@ export const api = {
       request<Source>(`/bots/${botId}/sources/url`, json("POST", { url, kind })),
     resync: (botId: string, id: string) => request<Source>(`/bots/${botId}/sources/${id}/resync`, json("POST")),
     remove: (botId: string, id: string) => request<void>(`/bots/${botId}/sources/${id}`, json("DELETE")),
+    helpCenter: (botId: string, id: string, on: boolean) =>
+      request<Source>(`/bots/${botId}/sources/${id}/help-center`, json("PUT", { in_help_center: on })),
     test: (botId: string, query: string, top_k: number, threshold: number) =>
       request<TestResult>(`/bots/${botId}/test`, json("POST", { query, top_k, threshold })),
   },

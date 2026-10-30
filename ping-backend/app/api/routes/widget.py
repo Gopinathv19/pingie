@@ -20,13 +20,17 @@ from app.schemas.widget import (
     ConversationStarted,
     FeedbackRequest,
     HandoffResult,
+    HelpArticle,
+    HelpFeedback,
+    HelpList,
     IdentifyRequest,
     LiveUpdates,
+    RatingRequest,
     SendMessage,
     StartConversation,
     WidgetConfig,
 )
-from app.services import chat_service, live_service
+from app.services import chat_service, help_service, live_service
 
 router = APIRouter(prefix="/widget/{bot_id}", tags=["widget"])
 
@@ -139,3 +143,61 @@ def updates(
     conversation = chat_service.load_conversation(db, bot, token, conversation_id)
     limiter.check(f"poll:{bot.id}:{client_ip(request)}", get_settings().widget_poll_rate_limit_per_minute)
     return live_service.updates(db, bot, conversation, after, roles=("agent", "system"))
+
+
+@router.post("/conversations/{conversation_id}/end", status_code=status.HTTP_204_NO_CONTENT)
+def end(
+    bot_id: str,
+    conversation_id: uuid.UUID,
+    db: DbSession,
+    origin: Origin = None,
+    token: ConversationToken = None,
+) -> None:
+    """The visitor clicked End. A new message later reopens the chat."""
+    bot, _ = chat_service.resolve_widget_bot(db, bot_id, origin)
+    conversation = chat_service.load_conversation(db, bot, token, conversation_id)
+    live_service.close(db, conversation)
+
+
+@router.post("/conversations/{conversation_id}/rating", status_code=status.HTTP_204_NO_CONTENT)
+def rate(
+    bot_id: str,
+    conversation_id: uuid.UUID,
+    payload: RatingRequest,
+    db: DbSession,
+    origin: Origin = None,
+    token: ConversationToken = None,
+) -> None:
+    """"How was your chat?": 1 unhappy, 2 neutral, 3 happy."""
+    bot, _ = chat_service.resolve_widget_bot(db, bot_id, origin)
+    conversation = chat_service.load_conversation(db, bot, token, conversation_id)
+    chat_service.rate_conversation(db, conversation, payload.score, payload.comment, payload.source)
+
+
+def _help_limit(bot_key: str, request: Request) -> None:
+    limiter.check(f"help:{bot_key}:{client_ip(request)}", get_settings().widget_poll_rate_limit_per_minute)
+
+
+@router.get("/help", response_model=HelpList)
+def help_articles(bot_id: str, request: Request, db: DbSession, q: str = "", origin: Origin = None):
+    """The Help Center: web pages and team answers, searchable."""
+    bot, _ = chat_service.resolve_widget_bot(db, bot_id, origin)
+    _help_limit(bot.public_id, request)
+    return {"items": help_service.list_articles(db, bot, q)}
+
+
+@router.get("/help/{article_id}", response_model=HelpArticle)
+def help_article(bot_id: str, article_id: str, request: Request, db: DbSession, origin: Origin = None):
+    bot, _ = chat_service.resolve_widget_bot(db, bot_id, origin)
+    _help_limit(bot.public_id, request)
+    return help_service.get_article(db, bot, article_id)
+
+
+@router.post("/help/{article_id}/feedback", status_code=status.HTTP_204_NO_CONTENT)
+def help_feedback(
+    bot_id: str, article_id: str, payload: HelpFeedback, request: Request, db: DbSession, origin: Origin = None
+) -> None:
+    """"Did this answer your question?" on an article."""
+    bot, _ = chat_service.resolve_widget_bot(db, bot_id, origin)
+    _help_limit(bot.public_id, request)
+    help_service.rate_article(db, bot, article_id, payload.helpful)

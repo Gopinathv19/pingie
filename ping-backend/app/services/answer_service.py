@@ -259,6 +259,13 @@ def draft_from_conversation(
     return prompts.parse_draft(result.content, mode)
 
 
+def get_answer(db: Session, bot: Bot, answer_id: uuid.UUID) -> BotAnswer:
+    row = db.get(BotAnswer, answer_id)
+    if row is None or row.bot_id != bot.id:
+        raise NotFoundError("Answer not found")
+    return row
+
+
 def delete_answer(db: Session, bot: Bot, memora: MemoraClient, answer_id: uuid.UUID) -> None:
     row = db.get(BotAnswer, answer_id)
     if row is None or row.bot_id != bot.id:
@@ -311,6 +318,9 @@ def to_read(row: BotAnswer, shared_with: int = 0) -> dict:
         "kind": row.kind,
         "origin_bot_id": row.origin_bot_id,
         "shared_with": shared_with,
+        "in_help_center": row.in_help_center,
+        "helpful": row.helpful_count,
+        "unhelpful": row.unhelpful_count,
     }
 
 
@@ -323,28 +333,72 @@ _STOP = set(
 )
 
 
+def _stem(w: str) -> str:
+    """Light stemming so "pricing", "price" and "prices" meet ("pric")."""
+    for suffix in ("ing", "ed", "es", "s"):
+        if w.endswith(suffix) and not w.endswith("ss") and len(w) - len(suffix) >= 3:
+            w = w[: -len(suffix)]
+            break
+    return w[:-1] if w.endswith("e") and len(w) > 3 else w
+
+
 def _words(text: str) -> set[str]:
-    words = set()
-    for w in re.findall(r"[a-z0-9]+", text.lower()):
-        if w in _STOP or len(w) < 3:
-            continue
-        words.add(w[:-1] if w.endswith("s") and len(w) > 4 else w)  # plans -> plan
-    return words
+    return {_stem(w) for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in _STOP and len(w) >= 3}
 
 
-def match_taught_answer(db: Session, bot: Bot, question: str) -> BotAnswer | None:
-    """The taught answer (kind=answer) whose question shares most of the
-    visitor's key words, or None. Only called when retrieval already ranked
-    "Team answers" first, so this just picks which answer in it was meant."""
-    asked = _words(question)
-    if not asked:
-        return None
-    best, best_score = None, 0.0
-    for row in list_answers(db, bot):
-        if row.kind != "answer":
+def taught_match(asked: set[str], taught: set[str]) -> float:
+    """How well a visitor's key words match a taught question, 0 to 1.
+
+    Both sides must agree: most of what the visitor asked is in the taught
+    question AND most of the taught question is in what they asked. One
+    shared word is enough only when each side has a single key word
+    ("pricing?" and "What is the price?")."""
+    shared = len(asked & taught)
+    if not shared:
+        return 0.0
+    if len(asked) == 1 and len(taught) == 1:
+        return 1.0
+    if shared < 2:
+        return 0.0
+    of_asked, of_taught = shared / len(asked), shared / len(taught)
+    if of_asked < 0.5 or of_taught < 0.5:
+        return 0.0
+    return (of_asked + of_taught) / 2
+
+
+def _squash(text: str) -> str:
+    return " ".join(re.findall(r"[a-z0-9]+", text.lower()))
+
+
+def pick_taught(questions: list[str], rows: list[BotAnswer], passage: str | None = None) -> BotAnswer | None:
+    """The taught answer (kind=answer) that best matches the first of
+    `questions` that matches any, or None.
+
+    `passage` is the retrieved "Team answers" text; when given, the answer's
+    own question must be in it, so the answer sent is the one retrieval found."""
+    in_passage = _squash(passage) if passage is not None else None
+    candidates = [
+        r for r in rows
+        if r.kind == "answer" and (in_passage is None or _squash(r.question) in in_passage)
+    ]
+    for question in questions:
+        asked = _words(question)
+        if not asked:
             continue
-        overlap = len(asked & _words(row.question))
-        score = overlap / len(asked)
-        if overlap and score > best_score:
-            best, best_score = row, score
-    return best if best_score >= 0.5 else None
+        best, best_score = None, 0.0
+        for row in candidates:
+            score = taught_match(asked, _words(row.question))
+            if score > best_score:
+                best, best_score = row, score
+        if best is not None:
+            return best
+    return None
+
+
+def match_taught_answer(
+    db: Session, bot: Bot, questions: list[str], passage: str | None = None, answers: list[BotAnswer] | None = None,
+) -> BotAnswer | None:
+    """Which taught answer the visitor meant, or None. Only called when
+    retrieval already ranked "Team answers" first (see chat_service._taught_reply).
+    `answers` stands in for the bot's stored answers when given."""
+    return pick_taught(questions, list_answers(db, bot) if answers is None else answers, passage)

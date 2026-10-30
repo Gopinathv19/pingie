@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="380" viewBox="0 0 1200 380" role="img" aria-label="Pingie: AI customer support that answers only from what you train it on">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B0B12"/>
+      <stop offset="0.6" stop-color="#120D24"/>
+      <stop offset="1" stop-color="#1E1240"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.82" cy="0.35" r="0.55">
+      <stop offset="0" stop-color="#7C3AED" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#7C3AED" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="head" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7C3AED"/>
+      <stop offset="1" stop-color="#5B21B6"/>
+    </linearGradient>
+    <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1" fill="#FFFFFF" fill-opacity="0.06"/>
+    </pattern>
+  </defs>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  </style>
+
+  <rect width="1200" height="380" rx="20" fill="url(#bg)"/>
+  <rect width="1200" height="380" rx="20" fill="url(#dots)"/>
+  <rect width="1200" height="380" rx="20" fill="url(#glow)"/>
+
+  <!-- Brand -->
+  <rect x="64" y="60" width="52" height="52" rx="6" fill="#7C3AED"/>
+  <text x="90" y="98" text-anchor="middle" font-size="30" font-weight="700" fill="#FFFFFF">P</text>
+  <text x="132" y="96" font-size="26" font-weight="600" fill="#FFFFFF">Pingie</text>
+
+  <text x="64" y="168" font-size="13" font-weight="600" letter-spacing="2.5" fill="#A78BFA">AI CUSTOMER SUPPORT</text>
+  <text x="64" y="214" font-size="40" font-weight="700" fill="#FFFFFF" letter-spacing="-1">Answers only from</text>
+  <text x="64" y="262" font-size="40" font-weight="700" fill="#A78BFA" letter-spacing="-1">what you train it on.</text>
+  <text x="64" y="304" font-size="16" fill="#C4C4D4">Cited answers · honest “I don’t know” · live human handoff</text>
+  <text x="64" y="332" font-size="13" fill="#8A8AA0">Powered by NVIDIA Nemotron 3 Super on Nebius Token Factory</text>
+
+  <!-- Chat card -->
+  <g transform="translate(690 52)">
+    <rect width="446" height="276" rx="12" fill="#111118" stroke="#2A2A3A"/>
+    <path d="M12 0 H434 A12 12 0 0 1 446 12 V52 H0 V12 A12 12 0 0 1 12 0 Z" fill="url(#head)"/>
+    <rect x="18" y="13" width="26" height="26" rx="4" fill="#FFFFFF" fill-opacity="0.18"/>
+    <text x="31" y="31" text-anchor="middle" font-size="14" font-weight="700" fill="#FFFFFF">P</text>
+    <text x="56" y="25" font-size="14" font-weight="600" fill="#FFFFFF">Acme Help</text>
+    <text x="56" y="42" font-size="11" fill="#E9DDFF">Typically replies instantly</text>
+
+    <!-- visitor 1 -->
+    <rect x="186" y="68" width="244" height="32" rx="8" fill="#7C3AED"/>
+    <text x="308" y="89" text-anchor="middle" font-size="12.5" fill="#FFFFFF">Can I get a refund on an annual plan?</text>
+    <!-- bot 1 -->
+    <rect x="16" y="110" width="300" height="32" rx="8" fill="#1A1A24" stroke="#2A2A3A"/>
+    <text x="30" y="131" font-size="12.5" fill="#E6E6EE">Yes, within 30 days of purchase.</text>
+    <rect x="16" y="150" width="138" height="22" rx="5" fill="none" stroke="#7C3AED"/>
+    <text x="85" y="165" text-anchor="middle" class="mono" font-size="11" fill="#C4B5FD">refund-policy.docx</text>
+
+    <!-- visitor 2 -->
+    <rect x="270" y="184" width="160" height="30" rx="8" fill="#7C3AED"/>
+    <text x="350" y="204" text-anchor="middle" font-size="12.5" fill="#FFFFFF">Do you ship to Iceland?</text>
+    <!-- bot 2 -->
+    <rect x="16" y="222" width="270" height="32" rx="8" fill="#1A1A24" stroke="#2A2A3A"/>
+    <text x="30" y="243" font-size="12.5" fill="#E6E6EE">I don’t have that information.</text>
+    <rect x="296" y="226" width="134" height="24" rx="5" fill="none" stroke="#3A3A4C"/>
+    <text x="363" y="242" text-anchor="middle" font-size="11.5" fill="#E6E6EE">Talk to a person</text>
+  </g>
+</svg>

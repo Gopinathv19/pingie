@@ -7,6 +7,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
@@ -79,6 +80,15 @@ class Conversation(UUIDPrimaryKey, TimestampCreated, Base):
     # this finished chat, and when it was pushed. A later message re-pushes it.
     memora_source_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     memory_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # None (not considered yet) | pending (waiting for review) | learned (pushed)
+    # | skipped (declined, failed the quality check, or forgotten: never re-pushed).
+    memory_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    # The visitor's rating of the whole chat: 1 unhappy, 2 neutral, 3 happy.
+    # source: end (visitor ended it) | closed (an agent ended it) | inline.
+    csat: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    csat_comment: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    csat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    csat_source: Mapped[str | None] = mapped_column(String(16), nullable=True)
 
 
 class Message(UUIDPrimaryKey, TimestampCreated, Base):

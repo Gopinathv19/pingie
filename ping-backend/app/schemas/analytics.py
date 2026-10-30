@@ -36,6 +36,13 @@ class TopQuestion(BaseModel):
     source: str | None
 
 
+class UnhelpfulArticle(BaseModel):
+    id: str
+    title: str
+    helpful: int
+    unhelpful: int
+
+
 class Overview(BaseModel):
     range: TimeRange
     kpis: list[Kpi]
@@ -47,5 +54,7 @@ class Overview(BaseModel):
     messages_14d: int
     top_pages: list[TopPage]
     knowledge_gaps: list[str]
+    # Help Center articles visitors said didn't answer their question
+    unhelpful_articles: list[UnhelpfulArticle] = []
     unanswered_count: int
     top_questions: list[TopQuestion]

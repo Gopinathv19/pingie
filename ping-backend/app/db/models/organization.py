@@ -24,6 +24,8 @@ class Organization(UUIDPrimaryKey, StatusColumn, TimestampCreated, Base):
     shares_limit: Mapped[int] = mapped_column(Integer, nullable=False, server_default="3")
     members_limit: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
     remove_branding: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    # Widget layouts, logo, shapes and fonts (paid plans).
+    custom_design: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     stripe_customer_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     stripe_subscription_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     owner_user_id: Mapped[uuid.UUID] = mapped_column(

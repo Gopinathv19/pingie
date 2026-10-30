@@ -4,7 +4,7 @@ import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import case, func, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -21,9 +21,9 @@ from app.db.models import (
     OrganizationMember,
 )
 from app.reasoning.pipeline import BotProfile
-from app.schemas.appearance import WidgetAppearance
+from app.schemas.appearance import PRO_FIELDS, WidgetAppearance
 from app.schemas.bot import BotCreate, BotUpdate
-from app.services import plan_service
+from app.services import live_service, memory_service, plan_service
 
 log = logging.getLogger(__name__)
 
@@ -105,7 +105,10 @@ def update_bot(db: Session, bot: Bot, payload: BotUpdate) -> Bot:
                 f"Email {settings.support_email} to upgrade."
             )
     for field, value in updates.items():
-        if field in ("name", "domain", "handoff_email", "instructions", "fallback_message", "offline_message"):
+        if field in (
+            "name", "domain", "handoff_email", "instructions", "fallback_message", "offline_message",
+            "blocked_topics", "off_topic_message", "alert_slack_url", "alert_webhook_url",
+        ):
             value = (value or "").strip()
         setattr(bot, field, value)
     db.commit()
@@ -141,6 +144,13 @@ def ensure_subject(db: Session, bot: Bot, memora: MemoraClient) -> uuid.UUID:
 
 
 def set_appearance(db: Session, bot: Bot, appearance: WidgetAppearance) -> WidgetAppearance:
+    org = db.get(Organization, bot.organization_id)
+    if org is None or not org.custom_design:
+        # Free plans can't change the design; stored values (say, from before a
+        # downgrade) may come back unchanged, so only a change is refused.
+        current = appearance_of(bot)
+        if any(getattr(appearance, f) != getattr(current, f) for f in PRO_FIELDS):
+            raise PlanRestrictionError("Custom design is available on paid plans. Upgrade to change the layout, logo and style.")
     bot.appearance = appearance.model_dump()
     db.commit()
     return appearance
@@ -161,6 +171,7 @@ def profile(bot: Bot) -> BotProfile:
         min_similarity=bot.min_similarity,
         fallback_message=bot.fallback_message,
         collect_email=bot.collect_email,
+        strictness=bot.answer_strictness,
     )
 
 
@@ -172,7 +183,8 @@ def counts(db: Session, bot: Bot) -> dict:
     domains = db.scalar(select(func.count(AllowedDomain.id)).where(AllowedDomain.bot_id == bot.id)) or 0
     live = db.scalar(
         select(func.count(Conversation.id)).where(
-            Conversation.bot_id == bot.id, Conversation.status.in_(("waiting", "human"))
+            Conversation.bot_id == bot.id,
+            or_(Conversation.status.in_(("waiting", "human")), live_service.wants_person_clause()),
         )
     ) or 0
     return {"conversations": conversations, "sources": sources, "domains": domains, "live": live}
@@ -180,6 +192,7 @@ def counts(db: Session, bot: Bot) -> dict:
 
 def to_detail(db: Session, bot: Bot, role: str = "owner", via: str = "workspace") -> dict:
     org = db.get(Organization, bot.organization_id)
+    can_edit = role in ("owner", "editor")
     return {
         "access_role": role,
         "access_via": via,
@@ -201,6 +214,23 @@ def to_detail(db: Session, bot: Bot, role: str = "owner", via: str = "workspace"
         "collect_email": bot.collect_email,
         "handoff_email": bot.handoff_email,
         "offline_message": bot.offline_message,
+        "handoff_mode": bot.handoff_mode,
+        "agents_online": live_service.team_available(db, bot),
+        "outside_hours": not live_service.in_business_hours(bot),
+        "next_opening": live_service.next_opening(bot),
+        "answer_strictness": bot.answer_strictness,
+        "topic_guard": bot.topic_guard,
+        "blocked_topics": bot.blocked_topics,
+        "off_topic_message": bot.off_topic_message,
+        "business_hours": bot.business_hours or {},
+        # Webhook URLs are credentials (anyone holding a Slack one can post to
+        # the channel): only people who can edit the bot see them.
+        "alert_slack_url": bot.alert_slack_url if can_edit else "",
+        "alert_webhook_url": bot.alert_webhook_url if can_edit else "",
+        "alerts_configured": bool(bot.alert_slack_url or bot.alert_webhook_url),
+        "alert_events": bot.alert_events or [],
+        "memory_mode": bot.memory_mode,
+        "memory": memory_service.stats(db, bot),
         "allow_localhost": bot.allow_localhost,
         "appearance": appearance_of(bot),
         "counts": counts(db, bot),

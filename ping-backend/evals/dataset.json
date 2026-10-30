@@ -1,0 +1,331 @@
+{
+  "description": "Pingie answer-evaluation cases. Knowledge: evals/knowledge/ (Acme Desk docs + team_answers.json). See evals/README.md for the fields.",
+  "cases": [
+    {
+      "id": "known-pro-price",
+      "category": "known",
+      "question": "How much is the Pro plan?",
+      "recorded": {"answer": "The Pro plan costs $29 per month {cite:pricing.md#Pro plan}. It includes 10 seats, 5 bots and priority email support."},
+      "expect": {"outcome": ["answered"], "must_include": [["$29", "29 dollars"]], "must_not_include": ["$49"], "cited_sources": ["pricing.md"]},
+      "note": "A fact stated in one document, cited to that document."
+    },
+    {
+      "id": "known-export-invoices",
+      "category": "known",
+      "question": "How do I export invoices?",
+      "recorded": {"answer": "Open Settings, then Billing, then Invoices, and click Export {cite:billing.md#Export invoices}. Invoices download as a CSV file."},
+      "expect": {"outcome": ["answered"], "must_include": [["Settings"], ["Export"]], "cited_sources": ["billing.md"], "forbid_sources": ["pricing.md"]},
+      "note": "Steps from the billing doc; must not cite the pricing doc."
+    },
+    {
+      "id": "known-support-hours",
+      "category": "known",
+      "question": "When is support available?",
+      "recorded": {"answer": "Support is available Monday to Friday, 9am to 6pm IST {cite:support.md#Support hours}."},
+      "expect": {"outcome": ["answered"], "must_include": [["9am", "9 am", "9:00"], ["6pm", "6 pm", "18:00"]], "cited_sources": ["support.md"]}
+    },
+    {
+      "id": "known-two-factor",
+      "category": "known",
+      "question": "How do I turn on two-factor authentication?",
+      "recorded": {"answer": "Open Settings, then Security, and turn on two-factor authentication {cite:security.md#Two-factor authentication}."},
+      "expect": {"outcome": ["answered"], "must_include": [["Security"]], "cited_sources": ["security.md"]}
+    },
+    {
+      "id": "known-data-location",
+      "category": "known",
+      "question": "Where is my data stored?",
+      "recorded": {"answer": "Customer data is stored in the EU, in Frankfurt, and encrypted at rest {cite:security.md#Data storage}."},
+      "expect": {"outcome": ["answered"], "must_include": [["EU", "Europe", "Frankfurt"]], "must_not_include": ["United States", "USA"], "cited_sources": ["security.md"]}
+    },
+
+    {
+      "id": "missing-pizza",
+      "category": "missing",
+      "question": "Can I order a pizza?",
+      "expect": {"fallback": true, "route": "no_evidence"},
+      "note": "Nothing in the knowledge shares a key word: fallback without calling the model."
+    },
+    {
+      "id": "missing-mobile-app",
+      "category": "missing",
+      "question": "Do you have a mobile app?",
+      "expect": {"fallback": true, "route": "no_evidence"}
+    },
+    {
+      "id": "missing-phone-number",
+      "category": "missing",
+      "question": "What is your phone number?",
+      "recorded": {"answer": "NO_ANSWER"},
+      "expect": {"fallback": true, "must_not_include": ["+91", "call us at"]},
+      "note": "Retrieval finds a passage about an invoice number; the model must decline rather than invent a phone number."
+    },
+    {
+      "id": "missing-ceo-custom-fallback",
+      "category": "missing",
+      "question": "Who is the CEO?",
+      "bot": {"fallback_message": "Please email hello@acme.example and we'll help.", "collect_email": false},
+      "expect": {"fallback": true, "route": "no_evidence"},
+      "note": "The bot's own fallback message is used, and no email is asked for when collect_email is off."
+    },
+
+    {
+      "id": "ambiguous-cost",
+      "category": "ambiguous",
+      "question": "How much does it cost?",
+      "recorded": {"answer": "The Free plan costs $0 {cite:pricing.md#Free plan}, and the Pro plan costs $29 per month {cite:pricing.md#Pro plan}."},
+      "expect": {"outcome": ["answered", "partial"], "must_include": [["$29"]], "cited_sources": ["pricing.md"]},
+      "note": "No plan named: the answer should cover the plans rather than guess one."
+    },
+    {
+      "id": "ambiguous-money-back",
+      "category": "ambiguous",
+      "question": "Can I get my money back?",
+      "recorded": {"answer": "Yes. Monthly plans can be refunded within 14 days of payment, so you get your money back in full {cite:refunds.md#Monthly plans}."},
+      "expect": {"outcome": ["answered", "partial"], "must_include": [["14 days", "30 days"]], "cited_sources": ["refunds.md"]}
+    },
+
+    {
+      "id": "partial-balanced",
+      "category": "partial",
+      "question": "How much is the Pro plan and does it include phone support?",
+      "bot": {"strictness": "balanced"},
+      "recorded": {"answer": "The Pro plan costs $29 per month and includes priority email support {cite:pricing.md#Pro plan}. I couldn't find whether it includes phone support. [[PARTIAL]]"},
+      "expect": {"outcome": ["partial"], "must_include": [["$29"]], "must_not_include": ["PARTIAL"], "cited_sources": ["pricing.md"]},
+      "note": "Half documented: answer the half that is, say what's missing."
+    },
+    {
+      "id": "partial-helpful",
+      "category": "partial",
+      "question": "How much is the Pro plan and does it include phone support?",
+      "bot": {"strictness": "helpful"},
+      "recorded": {"answer": "The Pro plan costs $29 per month and includes priority email support {cite:pricing.md#Pro plan}. I couldn't find whether it includes phone support. [[PARTIAL]]"},
+      "expect": {"outcome": ["partial", "answered"], "must_include": [["$29"]], "must_not_include": ["phone support is included"], "cited_sources": ["pricing.md"]}
+    },
+
+    {
+      "id": "follow-up-seats",
+      "category": "follow_up",
+      "history": [
+        {"role": "user", "content": "Tell me about the Pro plan"},
+        {"role": "assistant", "content": "The Pro plan costs $29 per month."}
+      ],
+      "question": "and how many seats does it have?",
+      "recorded": {"condensed": "how many seats does the Pro plan have", "answer": "The Pro plan includes 10 seats {cite:pricing.md#Pro plan}."},
+      "expect": {"outcome": ["answered"], "must_include": [["10 seats", "10 users", "ten seats"]], "cited_sources": ["pricing.md"]},
+      "note": "\"it\" is the Pro plan from the previous turn."
+    },
+    {
+      "id": "follow-up-annual-refunds",
+      "category": "follow_up",
+      "history": [
+        {"role": "user", "content": "Can I get a refund?"},
+        {"role": "assistant", "content": "Monthly plans can be refunded within 14 days of payment."}
+      ],
+      "question": "what about annual plans?",
+      "recorded": {"condensed": "refund policy for annual plans", "answer": "Annual plans can be refunded within 30 days of payment {cite:refunds.md#Annual plans}."},
+      "expect": {"outcome": ["answered"], "must_include": [["30 days"]], "must_not_include": ["14 days"]}
+    },
+    {
+      "id": "follow-up-weekends",
+      "category": "follow_up",
+      "history": [
+        {"role": "user", "content": "When is support available?"},
+        {"role": "assistant", "content": "Support is available Monday to Friday, 9am to 6pm IST."}
+      ],
+      "question": "and on weekends?",
+      "recorded": {"condensed": "is support available on weekends", "answer": "NO_ANSWER"},
+      "expect": {"outcome": ["fallback", "partial", "answered"], "must_not_include": ["saturday", "sunday"]},
+      "note": "Weekend hours aren't documented: decline, or say support is Monday to Friday. Never invent weekend hours."
+    },
+
+    {
+      "id": "mode-strict-strong-evidence",
+      "category": "mode",
+      "question": "How much is the Pro plan?",
+      "bot": {"strictness": "strict"},
+      "recorded": {"answer": "The Pro plan costs $29 per month {cite:pricing.md#Pro plan}."},
+      "expect": {"outcome": ["answered"], "must_include": [["$29"]], "cited_sources": ["pricing.md"]},
+      "note": "Strict still answers when the evidence is strong."
+    },
+    {
+      "id": "mode-strict-weak-evidence",
+      "category": "mode",
+      "question": "Is SSO included in my plan?",
+      "bot": {"strictness": "strict"},
+      "retrieval": [{"source": "security.md", "section": "Single sign-on", "rerank": -5.0}],
+      "recorded": {"answer": "Single sign-on (SSO) is available on the Enterprise plan only {cite:security.md#Single sign-on}."},
+      "expect": {"fallback": true, "route": "no_evidence"},
+      "note": "Rerank -5.0 is below Strict's floor (-4.5): not evidence."
+    },
+    {
+      "id": "mode-balanced-weak-evidence",
+      "category": "mode",
+      "question": "Is SSO included in my plan?",
+      "bot": {"strictness": "balanced"},
+      "retrieval": [{"source": "security.md", "section": "Single sign-on", "rerank": -5.0}],
+      "recorded": {"answer": "Single sign-on (SSO) is available on the Enterprise plan only {cite:security.md#Single sign-on}."},
+      "expect": {"outcome": ["answered"], "must_include": [["Enterprise"]], "cited_sources": ["security.md"]},
+      "note": "The same passage clears Balanced's floor (-5.5)."
+    },
+    {
+      "id": "mode-balanced-very-weak-evidence",
+      "category": "mode",
+      "question": "Is SSO included in my plan?",
+      "bot": {"strictness": "balanced"},
+      "retrieval": [{"source": "security.md", "section": "Single sign-on", "rerank": -6.0}],
+      "recorded": {"answer": "Single sign-on (SSO) is available on the Enterprise plan only {cite:security.md#Single sign-on}."},
+      "expect": {"fallback": true, "route": "no_evidence"}
+    },
+    {
+      "id": "mode-helpful-very-weak-evidence",
+      "category": "mode",
+      "question": "Is SSO included in my plan?",
+      "bot": {"strictness": "helpful"},
+      "retrieval": [{"source": "security.md", "section": "Single sign-on", "rerank": -6.0}],
+      "recorded": {"answer": "Single sign-on (SSO) is available on the Enterprise plan only {cite:security.md#Single sign-on}."},
+      "expect": {"outcome": ["answered"], "must_include": [["Enterprise"]], "cited_sources": ["security.md"]},
+      "note": "Helpful (-6.5) keeps a passage Balanced drops."
+    },
+    {
+      "id": "mode-strict-partial",
+      "category": "mode",
+      "question": "How much is the Pro plan and does it include phone support?",
+      "bot": {"strictness": "strict"},
+      "recorded": {"answer": "The Pro plan costs $29 per month {cite:pricing.md#Pro plan}. I couldn't find whether it includes phone support. [[PARTIAL]]"},
+      "expect": {"fallback": true},
+      "note": "Strict never sends a half answer (the model declines, or Ping turns its partial into the fallback)."
+    },
+
+    {
+      "id": "citation-sso-security-doc",
+      "category": "citation",
+      "question": "Which plan includes SSO?",
+      "recorded": {"answer": "SSO is available on the Enterprise plan only {cite:security.md#Single sign-on}."},
+      "expect": {"outcome": ["answered"], "must_include": [["Enterprise"]], "forbid_sources": ["billing.md", "refunds.md"]},
+      "note": "Pro, Enterprise and SSO passages all rank alike; the citation must be one that mentions SSO."
+    },
+    {
+      "id": "citation-uncited-answer",
+      "category": "citation",
+      "question": "How do I change my payment card?",
+      "recorded": {"answer": "Open Settings, then Billing, and click Update card."},
+      "expect": {"outcome": ["answered"], "must_include": [["Update card", "update your card"]], "cited_sources": ["billing.md"], "forbid_sources": ["refunds.md"]},
+      "note": "The model cited nothing: the passage the answer drew on is cited, not the top search hit."
+    },
+
+    {
+      "id": "team-answer-exact",
+      "category": "team_answer",
+      "question": "How do I delete my account?",
+      "expect": {"outcome": ["answered"], "route": "taught_answer", "must_include": [["Delete account"]], "cited_sources": ["Team answers"]},
+      "note": "The team's answer is sent word for word, without the model."
+    },
+    {
+      "id": "team-answer-student-discount",
+      "category": "team_answer",
+      "question": "Do you have a student discount?",
+      "expect": {"outcome": ["answered"], "route": "taught_answer", "must_include": [["50%"]]}
+    },
+    {
+      "id": "team-answer-not-for-a-vague-question",
+      "category": "team_answer",
+      "question": "my account",
+      "retrieval": [{"source": "Team answers", "section": "How do I delete my account?", "rerank": 3.0}],
+      "recorded": {"answer": "NO_ANSWER"},
+      "expect": {"not_route": "taught_answer", "must_not_include": ["This removes all your bots and data"]},
+      "note": "One shared word is not the same question: the delete-account answer must not be sent."
+    },
+
+    {
+      "id": "regression-late-no-answer",
+      "category": "regression",
+      "llm": "replay",
+      "question": "Do you offer phone support?",
+      "recorded": {"answer": "Sorry, I couldn't find that. NO_ANSWER"},
+      "expect": {"fallback": true, "route": "model_declined", "must_not_include": ["NO_ANSWER"]},
+      "note": "Task 1: NO_ANSWER after a few words used to be shown as an answered reply."
+    },
+    {
+      "id": "regression-citation-list",
+      "category": "regression",
+      "llm": "replay",
+      "question": "How much is the Pro plan?",
+      "recorded": {"answer": "The Pro plan costs $29 per month [1, 2]."},
+      "expect": {"outcome": ["answered"], "must_not_include": ["[1", "2]"], "cited_sources": ["pricing.md"]},
+      "note": "Task 1: [1, 2] leaked into the text and counted as no citation."
+    },
+    {
+      "id": "regression-citation-range",
+      "category": "regression",
+      "llm": "replay",
+      "question": "How much does it cost?",
+      "recorded": {"answer": "The Free plan costs $0 and the Pro plan costs $29 per month [1-2]."},
+      "expect": {"outcome": ["answered"], "must_not_include": ["[1-2]"], "cited_sources": ["pricing.md"]},
+      "note": "Task 1: [1-2] ranges were not parsed."
+    },
+    {
+      "id": "regression-strict-partial",
+      "category": "regression",
+      "llm": "replay",
+      "question": "How much is the Pro plan and does it include phone support?",
+      "bot": {"strictness": "strict"},
+      "recorded": {"answer": "The Pro plan costs $29 per month {cite:pricing.md#Pro plan}. I couldn't find whether it includes phone support. [[PARTIAL]]"},
+      "expect": {"fallback": true, "route": "strict_partial"},
+      "note": "Task 1: Strict still returned partial answers."
+    },
+    {
+      "id": "regression-out-of-range-citation",
+      "category": "regression",
+      "llm": "replay",
+      "question": "Where is my data stored?",
+      "recorded": {"answer": "Your data is stored safely [7]."},
+      "expect": {"outcome": ["answered"], "no_citations": true, "must_not_include": ["[7]"]},
+      "note": "Task 1: an uncited or out-of-range answer cited the top search hit anyway."
+    },
+    {
+      "id": "regression-refund-policy-not-taught",
+      "category": "regression",
+      "llm": "replay",
+      "question": "refund policy?",
+      "retrieval": [
+        {"source": "Team answers", "section": "Can I get a refund on an annual plan after the first month?", "rerank": 3.0},
+        {"source": "refunds.md", "section": "Monthly plans", "rerank": 2.0},
+        {"source": "refunds.md", "section": "Annual plans", "rerank": 2.0}
+      ],
+      "recorded": {"answer": "Monthly plans can be refunded within 14 days of payment {cite:refunds.md#Monthly plans}, and annual plans within 30 days {cite:refunds.md#Annual plans}."},
+      "expect": {"route": "generate", "must_include": [["14 days"]], "cited_sources": ["refunds.md"]},
+      "note": "Task 1: two key words matched a long, different taught question, and its answer was sent word for word."
+    },
+    {
+      "id": "regression-condense-rejected",
+      "category": "regression",
+      "llm": "replay",
+      "history": [
+        {"role": "user", "content": "What plans do you have?"},
+        {"role": "assistant", "content": "Free, Pro and Enterprise."}
+      ],
+      "question": "and the pro one?",
+      "recorded": {"condensed": "NO_ANSWER", "answer": "The Pro plan costs $29 per month {cite:pricing.md#Pro plan}."},
+      "expect": {"outcome": ["answered"], "trace_keys": ["condense_rejected"], "cited_sources": ["pricing.md"]},
+      "note": "Task 1: a follow-up rewrite that isn't a query (here NO_ANSWER) was searched as if it were."
+    },
+    {
+      "id": "regression-zero-rerank-merge",
+      "category": "regression",
+      "llm": "replay",
+      "history": [
+        {"role": "user", "content": "What plans do you have?"},
+        {"role": "assistant", "content": "Free, Pro and Enterprise."}
+      ],
+      "question": "and pro?",
+      "retrieval": {
+        "what does pro cost": [{"source": "billing.md", "section": "Export invoices", "rerank": -3.0}],
+        "and pro?": [{"source": "pricing.md", "section": "Pro plan", "rerank": 0.0}]
+      },
+      "recorded": {"condensed": "what does pro cost", "answer": "The Pro plan costs $29 per month [1]."},
+      "expect": {"outcome": ["answered"], "evidence_first_source": "pricing.md", "cited_sources": ["pricing.md"], "forbid_sources": ["billing.md"]},
+      "note": "Task 1: a rerank score of exactly 0.0 was treated as -99 when merging the two follow-up searches."
+    }
+  ]
+}

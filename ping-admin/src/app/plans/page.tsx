@@ -60,6 +60,7 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
                   {!p.is_public && <span className="badge">Hidden</span>}
                   {!p.active && <span className="badge badge-off">Archived</span>}
                   {p.remove_branding && <span className="badge">No badge</span>}
+                  {p.custom_design && <span className="badge">Custom design</span>}
                 </td>
                 <td>{p.org_count}</td>
                 <td>

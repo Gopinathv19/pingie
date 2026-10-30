@@ -6,9 +6,7 @@ internal service. Each request (and each redirect hop) is checked against
 private, loopback, link-local and reserved addresses before it is made.
 """
 
-import ipaddress
 import logging
-import socket
 from dataclasses import dataclass
 from functools import lru_cache
 from urllib.parse import urljoin, urlparse
@@ -17,6 +15,7 @@ from urllib.robotparser import RobotFileParser
 import httpx
 from defusedxml import ElementTree
 
+from app.core import netguard
 from app.core.config import get_settings
 from app.core.errors import ValidationError
 from app.ingestion.html import Page, html_to_markdown
@@ -49,17 +48,9 @@ def normalize_url(raw: str) -> str:
 
 
 def _check_host(url: str) -> None:
-    if get_settings().crawl_allow_private_hosts:
-        return
-    host = urlparse(url).hostname or ""
-    try:
-        infos = socket.getaddrinfo(host, None)
-    except socket.gaierror as exc:
-        raise CrawlError(f"Could not resolve {host}") from exc
-    for info in infos:
-        ip = ipaddress.ip_address(info[4][0])
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
-            raise CrawlError(f"{host} resolves to a private address and cannot be crawled")
+    reason = netguard.private_host_reason(url)
+    if reason:
+        raise CrawlError(reason if reason.startswith("Could not") else f"{reason} and cannot be crawled")
 
 
 def _client() -> httpx.Client:

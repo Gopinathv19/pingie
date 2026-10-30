@@ -174,6 +174,22 @@ function OverviewBody({ botId, data, range }: { botId: string; data: Overview; r
         </Panel>
       </div>
 
+      {data.unhelpful_articles.length > 0 && (
+        <Panel title="Unhelpful Help Center articles" aside={<span className="hint">visitors said these didn&apos;t answer their question</span>}>
+          {data.unhelpful_articles.map((a) => (
+            <div key={a.id} className="row">
+              <span style={{ minWidth: 0 }}>{a.title}</span>
+              <span className="mono subtle" style={{ fontSize: 12, whiteSpace: "nowrap" }}>
+                👎 {a.unhelpful} · 👍 {a.helpful}
+              </span>
+              <Link href={botHref(botId, "knowledge")} className="link-action">
+                Improve →
+              </Link>
+            </div>
+          ))}
+        </Panel>
+      )}
+
       <Panel
         title="Top questions"
         aside={

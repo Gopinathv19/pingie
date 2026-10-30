@@ -19,7 +19,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import PurePath
 from urllib.parse import urlparse
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import case, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.clients.memora import MemoraClient, get_memora
@@ -88,7 +88,25 @@ def list_sources(db: Session, bot: Bot, memora: MemoraClient) -> dict:
             .order_by(BotSource.created_at.desc())
         )
     )
-    return {"items": [to_read(r) for r in rows], "summary": _summary(rows)}
+    pages = _child_help_stats(db, [r.id for r in rows if r.type == "sitemap"])
+    return {"items": [to_read(r, pages.get(r.id)) for r in rows], "summary": _summary(rows)}
+
+
+def _child_help_stats(db: Session, parent_ids: list[uuid.UUID]) -> dict[uuid.UUID, tuple[int, int, int]]:
+    """Per sitemap: how many crawled pages are readable, and their ratings."""
+    if not parent_ids:
+        return {}
+    rows = db.execute(
+        select(
+            BotSource.parent_id,
+            func.sum(case((BotSource.content.is_not(None), 1), else_=0)),
+            func.coalesce(func.sum(BotSource.helpful_count), 0),
+            func.coalesce(func.sum(BotSource.unhelpful_count), 0),
+        )
+        .where(BotSource.parent_id.in_(parent_ids))
+        .group_by(BotSource.parent_id)
+    ).all()
+    return {pid: (int(n or 0), int(h), int(u)) for pid, n, h, u in rows}
 
 
 def _summary(rows: list[BotSource]) -> dict:
@@ -103,8 +121,19 @@ def _summary(rows: list[BotSource]) -> dict:
     }
 
 
-def to_read(row: BotSource) -> dict:
+def to_read(row: BotSource, pages: tuple[int, int, int] | None = None) -> dict:
+    if row.type == "sitemap":
+        readable_pages, helpful, unhelpful = pages or (0, 0, 0)
+        readable = readable_pages > 0
+    else:
+        readable = row.content is not None
+        helpful, unhelpful = row.helpful_count, row.unhelpful_count
     return {
+        # Help Center: whether visitors can read it there, and how they rated it
+        "readable": readable,
+        "in_help_center": row.in_help_center,
+        "helpful": helpful,
+        "unhelpful": unhelpful,
         "id": row.id,
         "name": row.name,
         "type": row.type,
@@ -146,9 +175,22 @@ def upload_file(db: Session, bot: Bot, memora: MemoraClient, filename: str, cont
         size_bytes=len(content),
         last_synced_at=_now(),
     )
+    if ext in READABLE_UPLOADS and len(content) <= READABLE_MAX_BYTES:
+        _keep_readable(row, PurePath(filename).stem, content.decode("utf-8", errors="replace"))
     db.add(row)
     db.commit()
     return row
+
+
+# Uploads the Help Center can show as an article; PDF and DOCX stay answer-only.
+READABLE_UPLOADS = {".txt", ".md", ".markdown"}
+READABLE_MAX_BYTES = 200 * 1024
+
+
+def _keep_readable(row: BotSource, title: str, markdown: str) -> None:
+    """Keep a copy for the widget's Help Center: Memora can't hand a document back."""
+    row.title = (title or "").strip()[:300]
+    row.content = markdown
 
 
 def add_url(db: Session, bot: Bot, memora: MemoraClient, url: str, kind: str) -> BotSource:
@@ -208,6 +250,7 @@ def _index_page(db: Session, bot: Bot, row: BotSource, memora: MemoraClient) -> 
     row.error = None
     row.size_bytes = len(fetched.page.markdown.encode())
     row.page_count = 1
+    _keep_readable(row, fetched.page.title, fetched.page.markdown)
     row.last_synced_at = _now()
     db.commit()
     if old:  # a re-sync replaces the previous version
@@ -223,7 +266,10 @@ def _index_sitemap(db: Session, bot: Bot, row: BotSource, memora: MemoraClient) 
 
     children = []
     for url in urls:
-        child = BotSource(bot_id=bot.id, parent_id=row.id, type="page", name=_display_url(url), url=url, status="queued")
+        child = BotSource(
+            bot_id=bot.id, parent_id=row.id, type="page", name=_display_url(url), url=url, status="queued",
+            in_help_center=row.in_help_center,
+        )
         db.add(child)
         children.append(child)
     row.status = "indexing"
@@ -245,6 +291,7 @@ def _index_sitemap(db: Session, bot: Bot, row: BotSource, memora: MemoraClient) 
                 child.status = "indexing"
                 child.size_bytes = len(fetched.page.markdown.encode())
                 child.last_synced_at = _now()
+                _keep_readable(child, fetched.page.title, fetched.page.markdown)
             except (crawler.CrawlError, PingError) as exc:
                 child.status = "failed"
                 child.error = exc.message if isinstance(exc, PingError) else str(exc)
@@ -351,6 +398,16 @@ def resync(db: Session, bot: Bot, memora: MemoraClient, source_id: uuid.UUID) ->
     return row
 
 
+def set_help_center(db: Session, bot: Bot, source_id: uuid.UUID, on: bool) -> BotSource:
+    """List or hide a source in the widget's Help Center (a sitemap's pages follow it)."""
+    row = get_source(db, bot, source_id)
+    row.in_help_center = on
+    if row.type == "sitemap":
+        db.execute(update(BotSource).where(BotSource.parent_id == row.id).values(in_help_center=on))
+    db.commit()
+    return row
+
+
 def _delete_children(db: Session, row: BotSource, memora: MemoraClient) -> None:
     children = list(db.scalars(select(BotSource).where(BotSource.parent_id == row.id)))
     ids = [c.memora_source_id for c in children if c.memora_source_id]
@@ -389,6 +446,26 @@ def names_by_memora_id(db: Session, bot_id: uuid.UUID, memora_ids: list[str]) ->
         )
     ).all()
     return {**memory_service.names_by_memora_id(db, bot_id, ids), **{str(mid): name for mid, name in rows}}
+
+
+def articles_by_memora_id(db: Session, bot_id: uuid.UUID, memora_ids: list[str]) -> dict[str, str]:
+    """Help Center article ids for the cited sources that visitors can read."""
+    from app.services import help_service
+
+    ids = []
+    for raw in memora_ids:
+        try:
+            ids.append(uuid.UUID(raw))
+        except (TypeError, ValueError):
+            continue
+    if not ids:
+        return {}
+    rows = db.execute(
+        select(BotSource.memora_source_id, BotSource.id).where(
+            BotSource.bot_id == bot_id, BotSource.memora_source_id.in_(ids), *help_service.readable_source()
+        )
+    ).all()
+    return {str(mid): f"page:{sid}" for mid, sid in rows}
 
 
 # --- sweeper ------------------------------------------------------------------

@@ -36,12 +36,35 @@ from app.core.ratelimit import limiter
 from app.core.security import conversation_from_token, create_conversation_token
 from app.db.database import SessionLocal
 from app.db.models import AllowedDomain, Bot, BotSource, Conversation, Lead, Message, Organization, Visitor
+from app.reasoning import prompts
+from app.schemas.appearance import without_custom_design
 from app.reasoning.output import AnswerFilter
 from app.reasoning.pipeline import Citation, Prepared, Reasoner, Reply, Turn, wants_human
-from app.services import answer_service, bot_service, domain_service, live_service, notify, organization_service, source_service
+from app.services import (
+    alert_service, answer_service, bot_service, domain_service, help_service, live_service, notify,
+    organization_service, source_service,
+)
 
 log = logging.getLogger(__name__)
 
+def _offline_offer_text(bot: Bot) -> str:
+    """The offline offer; outside business hours it says when the team is back."""
+    if live_service.in_business_hours(bot):
+        return HANDOFF_OFFER_OFFLINE_TEXT
+    return (
+        f"{live_service.away_text(bot)}. Tap \u201cTalk to a person\u201d and I'll let them know, so they can "
+        "reply here. Or tell me what you need and I'll try to help right away."
+    )
+
+
+HANDOFF_OFFER_OFFLINE_TEXT = (
+    "Our team isn't online right now. Tap \u201cTalk to a person\u201d and I'll let them know, "
+    "so they can reply here when they're back. Or tell me what you need and I'll try to help right away."
+)
+HANDOFF_OFFER_TEXT = (
+    "Sure, I can connect you with someone from the team. Tap \u201cTalk to a person\u201d below. "
+    "Or tell me what you need and I'll try to help right away."
+)
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 # Conversation outcome is the worst reply outcome so far.
 _RANK = {"answered": 0, "partial": 1, "fallback": 2}
@@ -76,12 +99,15 @@ def widget_config(db: Session, bot: Bot, match: AllowedDomain | str) -> dict:
     org = db.get(Organization, bot.organization_id)
     if org is not None and not org.remove_branding:
         appearance = appearance.model_copy(update={"show_branding": True})
+    if org is None or not org.custom_design:
+        appearance = without_custom_design(appearance)
     return {
         "bot_id": bot.public_id,
         "name": bot.name,
         "status": bot.status,
         "online": is_online(bot, match),
-        "agents_online": live_service.agents_online(db, bot),
+        "agents_online": live_service.team_available(db, bot),
+        "help_center": help_service.has_articles(db, bot),
         "appearance": appearance,
     }
 
@@ -140,8 +166,38 @@ def set_feedback(db: Session, conversation: Conversation, message_id: uuid.UUID,
     message = db.get(Message, message_id)
     if message is None or message.conversation_id != conversation.id or message.role != "bot":
         raise NotFoundError("Message not found")
+    changed = message.feedback != value
     message.feedback = value
     db.commit()
+    if changed and value == "down":
+        bot = db.get(Bot, conversation.bot_id)
+        if bot is not None:
+            alert_service.fire(
+                bot, "disliked", visitor=alert_service.visitor_label(db.get(Visitor, conversation.visitor_id)),
+                conversation_id=conversation.id, text=message.content,
+            )
+
+
+CSAT_FACES = {1: "😞 unhappy", 2: "😐 neutral", 3: "😀 happy"}
+
+
+def rate_conversation(db: Session, conversation: Conversation, score: int, comment: str, source: str) -> None:
+    """The visitor's rating of the whole chat. They may change it; the last
+    rating wins. An unhappy rating alerts the team like a thumbs-down."""
+    changed = conversation.csat != score
+    conversation.csat = score
+    conversation.csat_comment = comment.strip()
+    conversation.csat_at = datetime.now(UTC)
+    conversation.csat_source = source
+    db.commit()
+    if changed and score == 1:
+        bot = db.get(Bot, conversation.bot_id)
+        if bot is not None:
+            visitor = alert_service.visitor_label(db.get(Visitor, conversation.visitor_id))
+            alert_service.fire(
+                bot, "disliked", visitor=visitor, conversation_id=conversation.id, text=conversation.csat_comment,
+                headline=f"{visitor} rated the chat {CSAT_FACES[score]}",
+            )
 
 
 # --- a visitor turn -----------------------------------------------------------
@@ -153,6 +209,7 @@ class VisitorTurn:
     early: Reply | None = None      # answered without reasoning
     prepared: Prepared | None = None
     answer_key: tuple | None = None  # set on a first question: where its answer is cached
+    offer_human: bool = False  # put "Talk to a person" under whatever the bot replies
 
 
 def precheck(db: Session, bot: Bot, client_key: str) -> None:
@@ -221,27 +278,41 @@ def begin(db: Session, bot: Bot, conversation: Conversation, text: str) -> Visit
     # anything the team taught it for this can reply. Asking again means they
     # really want one, and that starts the handover.
     history = _history(db, conversation, visitor_message.id)
-    if wants_human(text) and any(h.role == "user" and wants_human(h.content) for h in history):
-        if live_service.agents_online(db, bot):
+    asked_before = any(h.role == "user" and wants_human(h.content) for h in history)
+    if wants_human(text):
+        online = live_service.team_available(db, bot)
+        # The mode decides the first ask only; a second ask always escalates.
+        escalate = bot.handoff_mode == "instant" or asked_before
+        if not escalate:
+            if bot.handoff_mode == "offer":
+                turn.early = Reply(
+                    text=HANDOFF_OFFER_TEXT if online else _offline_offer_text(bot),
+                    outcome="smalltalk", offer_human=True, trace={"route": "handoff_offer"},
+                )
+                return turn
+            # "bot_first": answer as usual, with the button under the reply.
+            turn.offer_human = True
+        elif online:
+            # Someone is here now, even if this chat was flagged while nobody was.
             live_service.request_handoff(db, bot, conversation)
             turn.early = Reply(text="", outcome="human", trace={"route": "handoff"})
+            return turn
+        elif live_service.wants_person(conversation) and live_service.notified_recently(conversation):
+            turn.early = Reply(
+                text="I've already let the team know you'd like to talk to a person. They'll reply here as soon as they can.",
+                outcome="smalltalk", trace={"route": "handoff_already_requested"},
+            )
+            return turn
         else:
-            visitor = db.get(Visitor, conversation.visitor_id)
-            if visitor and visitor.email:
-                # Already have their email: pass it on instead of asking again.
-                asked = next((h.content for h in reversed(history) if h.role == "user" and not wants_human(h.content)), None)
-                turn.early = _capture_lead(db, bot, conversation, visitor.email, asked)
-                turn.early.text = (
-                    f"Our team isn't online right now, so I've passed your request on. "
-                    f"They'll get back to you at {visitor.email}."
-                )
-            else:
-                turn.early = Reply(
-                    text=live_service.NO_AGENT_TEXT,
-                    outcome="fallback",
-                    asks_for_email=True,
-                    trace={"route": "handoff_unavailable"},
-                )
+            reply_text, asks = live_service.record_offline_request(db, bot, conversation, announce=False)
+            turn.early = Reply(
+                text=reply_text, outcome="fallback", asks_for_email=asks, trace={"route": "handoff_requested"},
+            )
+            return turn
+
+    if bot.topic_guard and _blocked_topic(bot, text):
+        # A topic the team listed: decline at once, no retrieval and no model call.
+        turn.early = _off_topic_reply(bot, "blocked_topic")
         return turn
 
     profile = bot_service.profile(bot)
@@ -262,10 +333,46 @@ def begin(db: Session, bot: Bot, conversation: Conversation, text: str) -> Visit
         taught = _taught_reply(db, bot, turn.prepared)
         if taught is not None:
             turn.early = taught
+        elif bot.topic_guard and turn.prepared.kind == "fallback" and _off_topic(bot, text):
+            # Nothing in the knowledge, and not about this business either: decline
+            # politely instead of "leave your email". Only the fallback path pays for the check.
+            turn.early = _off_topic_reply(bot, "off_topic")
     except PingError as exc:
         log.warning("reasoning failed for conversation %s: %s", conversation.id, exc.message)
         turn.early = Reply(text=_ERROR_TEXT, outcome="fallback", trace={"route": "error", "error": exc.message})
     return turn
+
+
+def _blocked_topic(bot: Bot, text: str) -> bool:
+    """Any of the bot's blocked topics (one per line) appears as whole words."""
+    for topic in (bot.blocked_topics or "").splitlines():
+        topic = topic.strip()
+        if topic and re.search(rf"\b{re.escape(topic)}\b", text, re.I):
+            return True
+    return False
+
+
+def _off_topic(bot: Bot, text: str) -> bool:
+    """Ask the fast model whether a question is about this business at all.
+    On any failure, assume it is: the normal fallback is the safe reply."""
+    try:
+        result = reasoner().llm.chat(
+            [
+                {"role": "system", "content": prompts.topic_check_system(bot.name, bot.domain, bot.instructions)},
+                {"role": "user", "content": text},
+            ],
+            tier="fast", max_tokens=3, temperature=0.0, timeout=5.0,
+        )
+    except PingError as exc:
+        log.warning("topic check failed for bot %s: %s", bot.id, exc.message)
+        return False
+    return result.content.strip().lower().startswith("no")
+
+
+def _off_topic_reply(bot: Bot, route: str) -> Reply:
+    text = (bot.off_topic_message or "").strip() or prompts.default_off_topic(bot.name, bot.domain)
+    # Small talk, not fallback: it isn't a gap in the knowledge, and asks for no email.
+    return Reply(text=text, outcome="smalltalk", trace={"route": route})
 
 
 _answer_cache: TTLCache | None = None
@@ -292,24 +399,44 @@ def knowledge_version(db: Session, bot: Bot) -> str:
             func.count(BotSource.id).filter(BotSource.status == "ready"),
         ).where(BotSource.bot_id == bot.id)
     ).one()
-    remembered = db.scalar(select(func.max(Conversation.memory_synced_at)).where(Conversation.bot_id == bot.id))
-    settings = (bot.instructions, bot.tone, bot.reply_language, bot.model_tier, bot.min_similarity, bot.fallback_message)
-    raw = f"{count}|{synced.isoformat() if synced else ''}|{chunks}|{ready}|{remembered}|{settings}"
+    remembered, learned = db.execute(
+        select(
+            func.max(Conversation.memory_synced_at),
+            # Approving a reviewed chat or "Forget all" doesn't move the max above,
+            # but changes how many chats the bot has learned from.
+            func.count(Conversation.id).filter(Conversation.memory_status == "learned"),
+        ).where(Conversation.bot_id == bot.id)
+    ).one()
+    raw = f"{count}|{synced.isoformat() if synced else ''}|{chunks}|{ready}|{remembered}|{learned}|{settings_signature(bot)}"
     return hashlib.sha1(raw.encode()).hexdigest()[:16]
 
 
-def _taught_reply(db: Session, bot: Bot, prepared: Prepared) -> Reply | None:
+def settings_signature(bot: Bot) -> tuple:
+    """The bot settings that change what it answers or says when it can't."""
+    return (
+        bot.name, bot.instructions, bot.tone, bot.reply_language, bot.model_tier, bot.min_similarity,
+        bot.fallback_message, bot.collect_email, bot.answer_strictness, bot.topic_guard, bot.blocked_topics,
+        bot.off_topic_message,
+    )
+
+
+def _taught_reply(db: Session, bot: Bot, prepared: Prepared, answers: list | None = None) -> Reply | None:
     """A taught answer, sent word for word without the model, when retrieval put
     "Team answers" first and one taught question matches the visitor's words.
 
     The model paraphrased or ignored taught answers (and the conversation
-    history pulled it off course), so an answer the team wrote is sent as written."""
+    history pulled it off course), so an answer the team wrote is sent as written.
+    `answers` replaces the bot's stored answers (the evaluation suite, evals/)."""
     if prepared.kind != "generate" or not prepared.evidence:
         return None
     top = max(prepared.evidence, key=lambda c: c.rerank_score if c.rerank_score is not None else -99)
     if not (top.source_filename or "").startswith(answer_service.SOURCE_NAME):
         return None
-    row = answer_service.match_taught_answer(db, bot, prepared.question)
+    # A follow-up ("and on weekends?") is matched on its condensed form first.
+    questions = [prepared.question]
+    if prepared.standalone and prepared.standalone != prepared.question:
+        questions.insert(0, prepared.standalone)
+    row = answer_service.match_taught_answer(db, bot, questions, passage=top.content, answers=answers)
     if row is None:
         return None
     citation = Citation(
@@ -352,6 +479,10 @@ def _capture_lead(db: Session, bot: Bot, conversation: Conversation, email: str,
     db.add(Lead(bot_id=bot.id, conversation_id=conversation.id, visitor_id=visitor.id, email=email, question=question))
     db.commit()
     notify.send_handoff(bot.handoff_email, bot.name, email, question)
+    alert_service.fire(
+        bot, "lead", visitor=alert_service.visitor_label(visitor), conversation_id=conversation.id,
+        email=email, text=question,
+    )
     return Reply(
         text=f"Thanks! I've passed your question to the {bot.name} team. They'll get back to you at {email}.",
         outcome="lead",
@@ -359,11 +490,15 @@ def _capture_lead(db: Session, bot: Bot, conversation: Conversation, email: str,
 
 
 def complete(db: Session, bot: Bot, conversation: Conversation, turn: VisitorTurn, reply: Reply) -> Message:
-    names = source_service.names_by_memora_id(db, bot.id, [c.source_id for c in reply.citations])
+    cited = [c.source_id for c in reply.citations]
+    names = source_service.names_by_memora_id(db, bot.id, cited)
+    articles = source_service.articles_by_memora_id(db, bot.id, cited)
     citations = []
     for c in reply.citations:
         item = c.as_dict()
         item["source_name"] = names.get(c.source_id, c.source_name)
+        if c.source_id in articles:
+            item["article_id"] = articles[c.source_id]
         citations.append(item)
 
     message = Message(
@@ -401,7 +536,13 @@ def _payload(db: Session, bot: Bot, conversation: Conversation, message: Message
             "message_id": None, "text": "", "outcome": "human", "citations": [],
             "asks_for_email": False, "offer_human": False, "status": conversation.status,
         }
-    offer_human = reply.outcome == "fallback" and live_service.agents_online(db, bot)
+    # "Talk to a person" goes under the handoff offer and any reply the bot
+    # couldn't answer. With nobody online, clicking it flags the chat for the team.
+    offer_human = reply.offer_human or (
+        reply.outcome == "fallback"
+        and reply.trace.get("route") not in ("handoff_requested", "error")
+        and not live_service.wants_person(conversation)
+    )
     if offer_human:
         # Let the visitor choose a person first; asking for an email comes after.
         conversation.awaiting_email = False
@@ -418,8 +559,12 @@ def _payload(db: Session, bot: Bot, conversation: Conversation, message: Message
 
 
 def _finish(db: Session, bot: Bot, conversation: Conversation, turn: "VisitorTurn", reply: Reply) -> dict:
+    if turn.offer_human:
+        reply.offer_human = True
     if turn.answer_key is not None and reply.outcome == "answered" and reply.trace.get("route") in ("generate", "taught_answer"):
-        answer_cache().set(turn.answer_key, replace(reply, first_token_ms=None))
+        # Cached without this turn's "Talk to a person" button: whether to offer
+        # one is decided again for each chat (the handoff mode may change).
+        answer_cache().set(turn.answer_key, replace(reply, first_token_ms=None, offer_human=False))
     message = None if reply.outcome == "human" else complete(db, bot, conversation, turn, reply)
     return _payload(db, bot, conversation, message, reply)
 
@@ -466,9 +611,11 @@ def reply_stream(bot_id: uuid.UUID, conversation_id: uuid.UUID, text: str) -> It
                 for safe in reasoner().stream(profile, turn.prepared, meta, f):
                     yield _sse("delta", {"text": safe})
                 reply = reasoner().finish(profile, turn.prepared, f.finish())
-                if reply.outcome == "fallback":
+                if reply.outcome == "fallback" and not f.has_output:
                     # The model declined after we held its first words back;
-                    # nothing was shown yet, so show the fallback.
+                    # nothing was shown yet, so show the fallback. When some
+                    # text was shown (a strict-mode partial, a late NO_ANSWER),
+                    # the widget swaps the bubble for `done.text`.
                     yield _sse("delta", {"text": reply.text})
                 reply.model = meta.model
                 reply.gateway_query_id = meta.query_id

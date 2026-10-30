@@ -23,6 +23,7 @@ class Plan(UUIDPrimaryKey, TimestampCreated, TimestampUpdated, Base):
     shares_limit: Mapped[int] = mapped_column(Integer, nullable=False, server_default="3")
     members_limit: Mapped[int] = mapped_column(Integer, nullable=False)
     remove_branding: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    custom_design: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     model_tiers: Mapped[list] = mapped_column(JSONB, nullable=False, server_default='["fast"]')
     features: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
     is_public: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")

@@ -10,6 +10,7 @@ any number of API processes. `expire_waiting` runs lazily on reads.
 
 import uuid
 from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
@@ -26,7 +27,7 @@ from app.db.models import (
     Users,
     Visitor,
 )
-from app.services import notify
+from app.services import alert_service, notify
 
 ONLINE_WINDOW = timedelta(seconds=75)
 LIVE_STATUSES = ("waiting", "human")
@@ -49,6 +50,52 @@ def _agent_ids_query(bot: Bot):
     return members.union(shares)
 
 
+# --- Business hours ---------------------------------------------------------------
+
+_WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+_DAY_NAMES = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+
+
+def _hours(bot: Bot) -> dict | None:
+    hours = bot.business_hours or {}
+    return hours if hours.get("enabled") else None
+
+
+def in_business_hours(bot: Bot, now: datetime | None = None) -> bool:
+    """True when the bot has no hours set, or `now` falls in one of today's ranges."""
+    hours = _hours(bot)
+    if hours is None:
+        return True
+    local = (now or _now()).astimezone(ZoneInfo(hours.get("timezone") or "UTC"))
+    hhmm = local.strftime("%H:%M")
+    return any(start <= hhmm < end for start, end in hours.get("days", {}).get(_WEEKDAYS[local.weekday()], []))
+
+
+def next_opening(bot: Bot, now: datetime | None = None) -> str | None:
+    """When the team is next in, in the bot's time zone: "Monday 9:00 AM",
+    "today 2:00 PM". None if no hours are set or no day is open."""
+    hours = _hours(bot)
+    if hours is None:
+        return None
+    local = (now or _now()).astimezone(ZoneInfo(hours.get("timezone") or "UTC"))
+    days = hours.get("days", {})
+    for ahead in range(8):
+        day = local + timedelta(days=ahead)
+        for start, _end in sorted(days.get(_WEEKDAYS[day.weekday()], [])):
+            if ahead == 0 and start <= local.strftime("%H:%M"):
+                continue
+            h, m = (int(x) for x in start.split(":"))
+            clock = f"{(h % 12) or 12}:{m:02d} {'AM' if h < 12 else 'PM'}"
+            label = "today" if ahead == 0 else "tomorrow" if ahead == 1 else _DAY_NAMES[day.weekday()]
+            return f"{label} {clock}"
+    return None
+
+
+def team_available(db: Session, bot: Bot) -> bool:
+    """Someone can take a chat now: inside business hours and someone has Live on."""
+    return in_business_hours(bot) and agents_online(db, bot)
+
+
 def agents_online(db: Session, bot: Bot) -> bool:
     return bool(db.scalar(
         select(func.count()).select_from(AgentPresence).where(
@@ -68,18 +115,102 @@ def _system(db: Session, conv: Conversation, text: str) -> Message:
 
 # --- Visitor side ---------------------------------------------------------------------
 
+# Asked for a person while nobody was online (or nobody joined in time). The
+# chat stays with the bot but is flagged in the dashboard until someone joins.
+REQUEST_WINDOW = timedelta(days=7)
+# How long "I've already let the team know" stands in for a fresh notification.
+# Past it, asking again notifies the team again rather than repeating the line.
+RENOTIFY_WINDOW = timedelta(minutes=30)
+
+
+def notified_recently(conv: Conversation) -> bool:
+    return conv.handoff_requested_at is not None and _now() - conv.handoff_requested_at < RENOTIFY_WINDOW
+
+
+def wants_person(conv: Conversation) -> bool:
+    if conv.status != "bot" or conv.handoff_requested_at is None:
+        return False
+    if conv.agent_joined_at is not None and conv.agent_joined_at >= conv.handoff_requested_at:
+        return False
+    return _now() - conv.handoff_requested_at < REQUEST_WINDOW
+
+
+def wants_person_clause():
+    """`wants_person` as SQL, for lists and counts."""
+    return and_(
+        Conversation.status == "bot",
+        Conversation.handoff_requested_at.is_not(None),
+        Conversation.handoff_requested_at > _now() - REQUEST_WINDOW,
+        or_(Conversation.agent_joined_at.is_(None), Conversation.agent_joined_at < Conversation.handoff_requested_at),
+    )
+
+
+def away_text(bot: Bot) -> str:
+    """"Our team isn't online right now", or, outside business hours, when they're back."""
+    if not in_business_hours(bot):
+        back = next_opening(bot)
+        return f"Our team is away right now{f' and back {back}' if back else ''}"
+    return "Our team isn't online right now"
+
+
+def offline_request_text(email: str | None, bot: Bot | None = None) -> str:
+    away = away_text(bot) if bot is not None else "Our team isn't online right now"
+    if email:
+        return f"{away}, but I've let them know you'd like to talk to a person. They'll reply here, or at {email}."
+    return f"{away}, but I've let them know you'd like to talk to a person. Leave your email so they can reach you."
+
+
+def record_offline_request(db: Session, bot: Bot, conv: Conversation, announce: bool = True) -> tuple[str, bool]:
+    """Flag the chat for the team and tell them by email. Returns the text for
+    the visitor and whether it asks for their email."""
+    visitor = db.get(Visitor, conv.visitor_id)
+    email = visitor.email if visitor else None
+    conv.handoff_requested_at = _now()
+    conv.unread = True
+    text = offline_request_text(email, bot)
+    if announce:
+        msg = _system(db, conv, text)
+        if not email:
+            conv.awaiting_email = True
+            msg.trace = {"asks_for_email": True}
+    elif not email:
+        conv.awaiting_email = True
+    db.commit()
+    last = _last_visitor_text(db, conv)
+    if email:
+        notify.send_handoff(bot.handoff_email, bot.name, email, last)
+    alert_service.fire(
+        bot, "wants_person", visitor=alert_service.visitor_label(visitor), conversation_id=conv.id,
+        email=email, text=f"{last} (team offline: flagged)" if last else "(team offline: flagged)",
+    )
+    return text, not email
+
+
+def _last_visitor_text(db: Session, conv: Conversation) -> str:
+    return db.scalar(
+        select(Message.content)
+        .where(Message.conversation_id == conv.id, Message.role == "visitor")
+        .order_by(Message.created_at.desc())
+        .limit(1)
+    ) or ""
+
+
 def request_handoff(db: Session, bot: Bot, conv: Conversation) -> str:
     if conv.status in LIVE_STATUSES:
         return conv.status
-    if not agents_online(db, bot):
-        _ask_for_email(db, conv, NO_AGENT_TEXT)
-        db.commit()
+    if not team_available(db, bot):
+        record_offline_request(db, bot, conv)
         return "unavailable"
     conv.status = "waiting"
     conv.handoff_requested_at = _now()
     conv.unread = True
     _system(db, conv, WAITING_TEXT)
     db.commit()
+    visitor = db.get(Visitor, conv.visitor_id)
+    alert_service.fire(
+        bot, "wants_person", visitor=alert_service.visitor_label(visitor), conversation_id=conv.id,
+        email=visitor.email if visitor else None, text=_last_visitor_text(db, conv),
+    )
     return "waiting"
 
 
@@ -157,6 +288,7 @@ def updates(db: Session, bot: Bot, conv: Conversation, after: datetime | None, r
         "status": conv.status,
         "agent": _agent_brief(db, conv),
         "messages": [message_to_read(m, authors) for m in messages],
+        "rated": conv.csat is not None,
     }
 
 
@@ -235,6 +367,7 @@ def live_summary(db: Session, user: Users) -> dict:
             Conversation.bot_id.in_(bot_ids),
             or_(
                 Conversation.status == "waiting",
+                wants_person_clause(),
                 and_(Conversation.status == "human", Conversation.assigned_user_id == user.id),
             ),
         )
@@ -244,7 +377,8 @@ def live_summary(db: Session, user: Users) -> dict:
     waiting, mine = [], []
     for conv, bot, visitor in rows:
         expire_waiting(db, bot, conv)
-        if conv.status not in LIVE_STATUSES:
+        requested = wants_person(conv)
+        if conv.status not in LIVE_STATUSES and not requested:
             continue
         item = {
             "conversation_id": conv.id,
@@ -255,7 +389,8 @@ def live_summary(db: Session, user: Users) -> dict:
             "waiting_since": conv.handoff_requested_at,
             "last_message_at": conv.last_message_at,
             "unread": conv.unread,
+            "wants_person": requested,
         }
-        (waiting if conv.status == "waiting" else mine).append(item)
+        (waiting if conv.status == "waiting" or requested else mine).append(item)
     presence = db.get(AgentPresence, user.id)
     return {"available": bool(presence and presence.available), "waiting": waiting, "mine": mine}

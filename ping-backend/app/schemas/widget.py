@@ -13,6 +13,8 @@ class WidgetConfig(BaseModel):
     status: str
     online: bool
     agents_online: bool = False
+    # the bot has articles visitors can browse
+    help_center: bool = False
     appearance: WidgetAppearance
 
 
@@ -66,6 +68,33 @@ class LiveUpdates(BaseModel):
     status: str
     agent: LiveAgent | None
     messages: list[LiveMessage]
+    # the visitor already rated this chat, so the widget doesn't ask again
+    rated: bool = False
+
+
+class RatingRequest(BaseModel):
+    score: int = Field(ge=1, le=3)
+    comment: str = Field(default="", max_length=500)
+    source: str = Field(default="end", pattern=r"^(end|closed|inline)$")
+
+
+class HelpArticleSummary(BaseModel):
+    id: str  # "<kind>:<uuid>", kind = page | answer
+    title: str
+    snippet: str
+    url: str | None = None
+
+
+class HelpArticle(HelpArticleSummary):
+    body: str  # markdown
+
+
+class HelpList(BaseModel):
+    items: list[HelpArticleSummary]
+
+
+class HelpFeedback(BaseModel):
+    helpful: bool
 
 
 class FeedbackRequest(BaseModel):

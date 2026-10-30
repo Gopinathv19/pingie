@@ -10,7 +10,7 @@ import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -227,7 +227,20 @@ def set_member_role(db: Session, org: Organization, user_id: uuid.UUID, role: st
 
 def remove_member(db: Session, org: Organization, user_id: uuid.UUID) -> None:
     db.delete(_member_row(db, org, user_id))
+    # A bot share from before they joined would otherwise give them back
+    # access to that bot (bot_access falls back to shares for non-members).
+    _drop_bot_shares(db, org.id, user_id)
     db.commit()
+
+
+def _drop_bot_shares(db: Session, org_id: uuid.UUID, user_id: uuid.UUID) -> None:
+    """Remove `user_id`'s shares on `org_id`'s bots. A member's workspace role
+    is what counts on those bots, so a share is only ever a leftover."""
+    db.execute(
+        delete(BotShare)
+        .where(BotShare.user_id == user_id, BotShare.bot_id.in_(select(Bot.id).where(Bot.organization_id == org_id)))
+        .execution_options(synchronize_session=False)
+    )
 
 
 def list_shares(db: Session, bot: Bot) -> dict:
@@ -330,11 +343,19 @@ def accept(db: Session, inv: Invitation, user: Users) -> dict:
             if member_count(db, org.id) >= org.members_limit:
                 raise _seat_error(org.members_limit, "workspace members")
             db.add(OrganizationMember(organization_id=org.id, user_id=user.id, role=inv.role))
+        _drop_bot_shares(db, org.id, user.id)
     else:
         bot = db.get(Bot, inv.bot_id)
         if bot is None:
             raise NotFoundError("This bot no longer exists")
-        if not db.scalar(select(BotShare.id).where(BotShare.bot_id == bot.id, BotShare.user_id == user.id)):
+        member = db.scalar(select(OrganizationMember.id).where(
+            OrganizationMember.organization_id == org.id, OrganizationMember.user_id == user.id
+        ))
+        # Already in the workspace: their workspace role covers this bot, and a
+        # share would outlive their membership (see remove_member).
+        if member is None and not db.scalar(
+            select(BotShare.id).where(BotShare.bot_id == bot.id, BotShare.user_id == user.id)
+        ):
             if share_count(db, bot.id) >= org.shares_limit:
                 raise _seat_error(org.shares_limit, "people per shared bot")
             db.add(BotShare(bot_id=bot.id, user_id=user.id, role=inv.role, invited_by_user_id=inv.invited_by_user_id))

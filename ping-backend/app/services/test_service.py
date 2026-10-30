@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.db.models import Bot
-from app.reasoning.pipeline import Reasoner
+from app.reasoning.pipeline import Reasoner, is_evidence, rerank_floor_for
 from app.services import bot_service, source_service
 
 
@@ -41,6 +41,8 @@ def run_test(db: Session, bot: Bot, reasoner: Reasoner, query: str, top_k: int, 
     reply = reasoner.generate(profile, prepared)
     generation_ms = int((time.monotonic() - started) * 1000)
 
+    # The same test the chat applies, so "used" here means used there.
+    rerank_floor = rerank_floor_for(profile.strictness)
     chunks = [
         {
             "rank": i,
@@ -48,7 +50,7 @@ def run_test(db: Session, bot: Bot, reasoner: Reasoner, query: str, top_k: int, 
             "location": c.location,
             "score": round(c.similarity, 4),
             "rerank_score": c.rerank_score,
-            "above_threshold": c.similarity >= floor,
+            "above_threshold": is_evidence(c, floor, rerank_floor),
             "text": c.content,
         }
         for i, c in enumerate(result.chunks, start=1)
@@ -58,6 +60,7 @@ def run_test(db: Session, bot: Bot, reasoner: Reasoner, query: str, top_k: int, 
         "query": query,
         "standalone_query": prepared.standalone or query,
         "threshold": floor,
+        "rerank_floor": rerank_floor,
         "chunks": chunks,
         "answer": reply.text,
         "outcome": reply.outcome,

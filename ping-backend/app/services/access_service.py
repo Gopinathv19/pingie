@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.errors import NotFoundError, PermissionError_
-from app.db.models import Bot, BotShare, OrganizationMember, Users
+from app.db.models import Bot, BotShare, Organization, OrganizationMember, Users
 
 ROLE_RANK = {"viewer": 1, "editor": 2, "owner": 3}
 INVITABLE_ROLES = ("editor", "viewer")
@@ -38,6 +38,8 @@ def bot_access(db: Session, user: Users, public_id: str) -> BotAccess:
     # One query for the bot and the user's workspace role (each query is a round trip).
     row = db.execute(
         select(Bot, OrganizationMember.role)
+        # A suspended workspace's bots are out of reach, like ones you can't see.
+        .join(Organization, (Organization.id == Bot.organization_id) & (Organization.status == "active"))
         .outerjoin(
             OrganizationMember,
             (OrganizationMember.organization_id == Bot.organization_id) & (OrganizationMember.user_id == user.id),

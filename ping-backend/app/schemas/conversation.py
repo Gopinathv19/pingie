@@ -13,6 +13,8 @@ class CitationRead(BaseModel):
     location: str = ""
     chunk_id: str | None = None
     score: float | None = None
+    # set when the source is readable in the widget's Help Center
+    article_id: str | None = None
 
 
 class MessageRead(BaseModel):
@@ -41,6 +43,13 @@ class ConversationSummary(BaseModel):
     status: Literal["bot", "waiting", "human", "closed"]
     assigned_to: str | None
     waiting_since: datetime | None
+    # asked for a person while nobody was online; cleared when someone joins
+    wants_person: bool = False
+    # learning from this chat: pending | learned | skipped (None: not considered)
+    memory_status: str | None = None
+    # the visitor's rating of the chat: 1 unhappy, 2 neutral, 3 happy
+    csat: int | None = None
+    csat_comment: str = ""
 
 
 class ConversationPage(BaseModel):

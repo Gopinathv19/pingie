@@ -5,7 +5,28 @@ export type ModelTier = "fast" | "balanced" | "best";
 export type Tone = "friendly" | "professional" | "concise";
 export type ReplyLanguage = "auto" | "en" | "hi" | "ta";
 export type TimeRange = "24h" | "7d" | "30d" | "90d";
-export type ConversationFilter = "all" | "live" | "unanswered" | "down" | "handoff";
+export type ConversationFilter = "all" | "live" | "unanswered" | "down" | "handoff" | "review" | "unhappy";
+export type HandoffMode = "instant" | "offer" | "bot_first";
+export type MemoryMode = "manual" | "review" | "auto";
+export type AnswerStrictness = "strict" | "balanced" | "helpful";
+export type AlertEvent = "wants_person" | "lead" | "disliked";
+export type Weekday = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+
+export interface BusinessHours {
+  enabled: boolean;
+  timezone: string;
+  /** Up to 3 ["HH:MM", "HH:MM"] ranges per day; a missing day is closed. */
+  days: Partial<Record<Weekday, [string, string][]>>;
+}
+
+export interface SavedReply {
+  id: string;
+  title: string;
+  body: string;
+  updated_at: string;
+}
+export type MemoryStatus = "pending" | "learned" | "skipped";
+
 export type ChatStatus = "bot" | "waiting" | "human" | "closed";
 export type Outcome = "answered" | "partial" | "fallback";
 export type MessageOutcome = Outcome | "smalltalk" | "lead" | "offline";
@@ -32,6 +53,8 @@ export interface OrgUsage {
   members_limit: number;
   shares_limit: number;
   remove_branding: boolean;
+  /** Paid plans: widget layouts, logo, shapes and fonts. */
+  custom_design?: boolean;
 }
 
 export interface Org {
@@ -88,7 +111,24 @@ export interface WidgetAppearance {
   show_sources: boolean;
   show_branding: boolean;
   theme: "dark" | "light";
+  /** Visitors can browse web pages and team answers in the widget. */
+  help_center_enabled: boolean;
+  // Custom design (paid plans only)
+  layout: WidgetLayout;
+  header_style: "solid" | "gradient" | "light";
+  /** Second gradient colour; empty derives one from the accent. */
+  accent_2: string;
+  logo_url: string;
+  corner: "rounded" | "soft" | "square";
+  bubble: "filled" | "outline";
+  size: "standard" | "large";
+  font: "system" | "rounded" | "serif" | "mono";
 }
+
+export type WidgetLayout = "classic" | "welcome" | "compact";
+
+/** Appearance fields only paid plans may change. */
+export const DESIGN_FIELDS = ["layout", "header_style", "accent_2", "logo_url", "corner", "bubble", "size", "font"] as const;
 
 export interface Bot {
   id: string;
@@ -111,6 +151,24 @@ export interface Bot {
   collect_email: boolean;
   handoff_email: string;
   offline_message: string;
+  handoff_mode: HandoffMode;
+  /** A teammate has Live on right now, so a handover can connect someone. */
+  agents_online: boolean;
+  memory_mode: MemoryMode;
+  memory: { learned: number; pending: number };
+  answer_strictness: AnswerStrictness;
+  topic_guard: boolean;
+  blocked_topics: string;
+  off_topic_message: string;
+  business_hours: Partial<BusinessHours>;
+  /** Outside business hours right now, and when the team is back ("Monday 9:00 AM"). */
+  outside_hours: boolean;
+  next_opening: string | null;
+  /** Empty for viewers: webhook URLs are credentials. */
+  alert_slack_url: string;
+  alert_webhook_url: string;
+  alerts_configured: boolean;
+  alert_events: AlertEvent[];
   allow_localhost: boolean;
   appearance: WidgetAppearance;
   counts: { conversations: number; sources: number; domains: number; live: number };
@@ -134,9 +192,18 @@ export type BotUpdate = Partial<
     | "collect_email"
     | "handoff_email"
     | "offline_message"
+    | "handoff_mode"
+    | "memory_mode"
+    | "answer_strictness"
+    | "topic_guard"
+    | "blocked_topics"
+    | "off_topic_message"
+    | "alert_slack_url"
+    | "alert_webhook_url"
+    | "alert_events"
     | "allow_localhost"
   >
->;
+> & { business_hours?: BusinessHours };
 
 export interface Kpi {
   key: string;
@@ -164,6 +231,8 @@ export interface Overview {
   messages_14d: number;
   top_pages: { path: string; value: number }[];
   knowledge_gaps: string[];
+  /** Help Center articles visitors said didn't answer their question. */
+  unhelpful_articles: { id: string; title: string; helpful: number; unhelpful: number }[];
   unanswered_count: number;
   top_questions: { text: string; count: number; rate: string; source: string | null }[];
 }
@@ -174,6 +243,7 @@ export interface Citation {
   location: string;
   chunk_id?: string | null;
   score?: number | null;
+  article_id?: string | null;
 }
 
 export interface ChatMessage {
@@ -202,6 +272,13 @@ export interface ConversationSummary {
   status: ChatStatus;
   assigned_to: string | null;
   waiting_since: string | null;
+  /** Asked for a person while nobody was online; cleared when someone joins. */
+  wants_person: boolean;
+  /** Learning from this chat; null when it hasn't been considered. */
+  memory_status: MemoryStatus | null;
+  /** The visitor's rating of the chat: 1 unhappy, 2 okay, 3 happy. */
+  csat: 1 | 2 | 3 | null;
+  csat_comment: string;
 }
 
 export interface ConversationUpdates {
@@ -219,6 +296,7 @@ export interface LiveItem {
   waiting_since: string | null;
   last_message_at: string;
   unread: boolean;
+  wants_person?: boolean;
 }
 
 export interface LiveSummary {
@@ -236,6 +314,9 @@ export interface TeamAnswer {
   kind: "answer" | "summary" | "conversation";
   origin_bot_id: string | null;
   shared_with: number;
+  in_help_center: boolean;
+  helpful: number;
+  unhelpful: number;
 }
 
 export interface KnowledgeDraftItem {
@@ -260,6 +341,11 @@ export interface Source {
   page_count: number | null;
   url: string | null;
   updated_at: string;
+  /** Visitors can read it in the widget's Help Center (web pages and text files). */
+  readable: boolean;
+  in_help_center: boolean;
+  helpful: number;
+  unhelpful: number;
 }
 
 export interface SourceList {

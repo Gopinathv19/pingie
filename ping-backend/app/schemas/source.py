@@ -19,6 +19,14 @@ class SourceRead(BaseModel):
     page_count: int | None
     url: str | None
     updated_at: datetime
+    readable: bool = False
+    in_help_center: bool = True
+    helpful: int = 0
+    unhelpful: int = 0
+
+
+class HelpCenterToggle(BaseModel):
+    in_help_center: bool
 
 
 class SourceSummary(BaseModel):

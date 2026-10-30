@@ -10,7 +10,9 @@ from app.core.errors import ConflictError, NotFoundError, ValidationError
 from app.db.models import Organization, Plan
 
 MODEL_TIERS = ("fast", "balanced", "best")
-LIMIT_FIELDS = ("messages_limit", "bots_limit", "sources_limit", "members_limit", "shares_limit", "remove_branding")
+LIMIT_FIELDS = (
+    "messages_limit", "bots_limit", "sources_limit", "members_limit", "shares_limit", "remove_branding", "custom_design",
+)
 EDITABLE_FIELDS = (
     "name", "description", "price_monthly", "price_label", *LIMIT_FIELDS, "model_tiers", "features",
     "is_public", "is_default", "highlighted", "sort_order", "active",
@@ -137,6 +139,7 @@ def to_public(plan: Plan) -> dict:
         "members_limit": plan.members_limit,
         "shares_limit": plan.shares_limit,
         "remove_branding": plan.remove_branding,
+        "custom_design": plan.custom_design,
         "model_tiers": plan.model_tiers,
         "features": plan.features,
         "highlighted": plan.highlighted,

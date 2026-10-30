@@ -73,6 +73,7 @@ def _org_row(db: Session, org: Organization) -> dict:
         "members_limit": org.members_limit,
         "shares_limit": org.shares_limit,
         "remove_branding": org.remove_branding,
+        "custom_design": org.custom_design,
         "stripe_customer_id": org.stripe_customer_id,
         "created_at": org.created_at,
         "status": org.status,
@@ -113,6 +114,7 @@ class OrgPlanUpdate(BaseModel):
     members_limit: int | None = Field(default=None, ge=0)
     shares_limit: int | None = Field(default=None, ge=0)
     remove_branding: bool | None = None
+    custom_design: bool | None = None
 
 
 @router.patch("/orgs/{org_id}/plan")
@@ -136,6 +138,7 @@ class PlanFields(BaseModel):
     members_limit: int | None = Field(default=None, ge=0)
     shares_limit: int | None = Field(default=None, ge=0)
     remove_branding: bool | None = None
+    custom_design: bool | None = None
     model_tiers: list[str] | None = None
     features: list[str] | None = None
     is_public: bool | None = None

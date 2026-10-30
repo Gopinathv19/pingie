@@ -79,7 +79,7 @@ class _Vizhi:
         self.condensed = condensed
         self.calls = []
 
-    def chat(self, messages, tier="balanced", max_tokens=None, temperature=0.2):
+    def chat(self, messages, tier="balanced", max_tokens=None, temperature=0.2, timeout=None):
         from app.clients.llm import ChatResult
 
         self.calls.append((tier, messages))
@@ -105,7 +105,8 @@ def test_follow_up_is_condensed_before_retrieval_and_citation_maps_to_chunk():
     r = Reasoner(memora, vizhi)
     history = [Turn("user", "Tell me about the Pro plan"), Turn("assistant", "Pro has 10 seats.")]
     prepared = r.prepare(_bot(), history, "and how much is it?")
-    assert memora.queries == ["what does the pro plan cost"]
+    # The rewrite is searched, and the visitor's own words too (a rewrite can drift).
+    assert sorted(memora.queries) == ["and how much is it?", "what does the pro plan cost"]
     reply = r.generate(_bot(), prepared)
     assert reply.text == "It costs $29."
     assert [c.source_name for c in reply.citations] == ["pricing.pdf"]

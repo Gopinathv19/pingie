@@ -11,6 +11,16 @@ export interface Appearance {
   show_sources: boolean;
   show_branding: boolean;
   theme: "dark" | "light";
+  help_center_enabled?: boolean;
+  // Custom design (paid plans; the backend sends the defaults otherwise).
+  layout?: "classic" | "welcome" | "compact";
+  header_style?: "solid" | "gradient" | "light";
+  accent_2?: string;
+  logo_url?: string;
+  corner?: "rounded" | "soft" | "square";
+  bubble?: "filled" | "outline";
+  size?: "standard" | "large";
+  font?: "system" | "rounded" | "serif" | "mono";
 }
 
 export interface WidgetConfig {
@@ -19,6 +29,8 @@ export interface WidgetConfig {
   status: "live" | "paused" | "draft";
   online: boolean;
   agents_online?: boolean;
+  /** The bot has web pages or team answers visitors can browse. */
+  help_center?: boolean;
   appearance: Appearance;
 }
 
@@ -28,6 +40,8 @@ export interface Citation {
   location?: string;
   chunk_id?: string | null;
   score?: number | null;
+  /** Readable in the Help Center ("page:<id>"). */
+  article_id?: string | null;
 }
 
 /** answered | partial | fallback from reasoning; offline and lead from the chat service. */
@@ -59,6 +73,22 @@ export interface LiveUpdates {
   status: ChatStatus;
   agent: { name: string; avatar_url: string } | null;
   messages: LiveMessage[];
+  /** The visitor already rated this chat. */
+  rated?: boolean;
+}
+
+/** 1 unhappy, 2 neutral, 3 happy. */
+export type Score = 1 | 2 | 3;
+
+export interface HelpArticleSummary {
+  id: string; // "page:<uuid>" | "answer:<uuid>"
+  title: string;
+  snippet: string;
+  url: string | null;
+}
+
+export interface HelpArticle extends HelpArticleSummary {
+  body: string; // markdown
 }
 
 export interface ConversationStarted {
@@ -81,4 +111,6 @@ export interface ChatMessage {
   pending?: boolean; // still streaming
   statusText?: string; // shown with the typing dots until the first words arrive
   error?: boolean; // a local error notice, never sent by the server
+  askRating?: boolean; // the quiet "Did this help?" row under a resolved answer
+  ratedScore?: number; // what the visitor picked in that row
 }

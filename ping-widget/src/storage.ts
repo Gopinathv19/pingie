@@ -50,6 +50,8 @@ export interface SavedChat {
   status?: ChatStatus;
   agentName?: string;
   lastLiveAt?: string; // created_at of the newest agent/system message seen
+  rated?: number; // the visitor's rating of this chat, so it isn't asked again
+  askedInline?: boolean; // the "Did this help?" row was already shown once
 }
 
 const MAX_MESSAGES = 60;

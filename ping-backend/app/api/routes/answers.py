@@ -66,6 +66,20 @@ def update_answer(answer_id: uuid.UUID, payload: AnswerUpdate, bot: EditableBot,
     return answer_service.to_read(row, shared.get(row.id, 0))
 
 
+class HelpCenterToggle(BaseModel):
+    in_help_center: bool
+
+
+@router.put("/{answer_id}/help-center")
+def help_center(answer_id: uuid.UUID, payload: HelpCenterToggle, bot: EditableBot, db: DbSession):
+    """Show or hide this answer in the widget's Help Center."""
+    row = answer_service.get_answer(db, bot, answer_id)
+    row.in_help_center = payload.in_help_center
+    db.commit()
+    shared = answer_service.share_count(db, [row])
+    return answer_service.to_read(row, shared.get(row.id, 0))
+
+
 @router.delete("/{answer_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_answer(answer_id: uuid.UUID, bot: EditableBot, db: DbSession, memora: Memora) -> None:
     answer_service.delete_answer(db, bot, memora, answer_id)

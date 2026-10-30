@@ -265,3 +265,20 @@
   border-top: none;
   padding-top: 0;
 }
+
+/* ---- Help Center column ---- */
+.helpCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.answerMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-3);
+}

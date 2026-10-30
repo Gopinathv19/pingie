@@ -23,6 +23,8 @@ class TestResponse(BaseModel):
     query: str
     standalone_query: str
     threshold: float
+    # passages reranked below this are not used, whatever their similarity
+    rerank_floor: float | None = None
     chunks: list[TestChunk]
     answer: str
     outcome: str

@@ -1,12 +1,12 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
-from app.db.models.mixins import TimestampCreated, UUIDPrimaryKey
+from app.db.models.mixins import TimestampCreated, TimestampUpdated, UUIDPrimaryKey
 
 
 class AgentPresence(Base):
@@ -46,3 +46,22 @@ class BotAnswer(UUIDPrimaryKey, TimestampCreated, Base):
         UUID(as_uuid=True), ForeignKey("bots.id", ondelete="SET NULL"), nullable=True
     )
     share_group_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    # Help Center: listed for visitors, and how they rated it there.
+    in_help_center: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    helpful_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    unhelpful_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+
+
+class BotSavedReply(UUIDPrimaryKey, TimestampCreated, TimestampUpdated, Base):
+    """A canned reply agents insert in live chat ("/" in the reply box)."""
+
+    __tablename__ = "bot_saved_replies"
+
+    bot_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("bots.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    title: Mapped[str] = mapped_column(String(120), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )

@@ -3,7 +3,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,6 +16,11 @@ class LLMEndpoint:
     token_env: str
     # None for Vizhi: its token is bound to a model.
     model: str | None = None
+
+
+# Shipped defaults that must never sign real tokens.
+_DEFAULT_SECRETS = {"change-me-in-production", "change-me-admin-secret"}
+_MIN_SECRET_LENGTH = 32
 
 
 class Settings(BaseSettings):
@@ -154,6 +159,29 @@ class Settings(BaseSettings):
     smtp_username: str = ""
     smtp_password: str = ""
     smtp_from: str = "Pingie <no-reply@pingie.app>"
+
+    # --- Client IP behind a proxy -------------------------------------------------
+    # Proxies in front of the API that append to X-Forwarded-For. The client IP
+    # (rate limits) is the entry that many hops from the right: the leftmost
+    # entries are written by the client and can't be trusted. 0 ignores the
+    # header and uses the socket peer.
+    trusted_proxy_hops: int = Field(default=1, ge=0, le=5)
+
+    @model_validator(mode="after")
+    def _production_secrets(self) -> "Settings":
+        """Refuse to run in production with secrets anyone can sign tokens with."""
+        if self.environment != "production":
+            return self
+        problems = []
+        for name in ("auth_jwt_secret", "admin_jwt_secret"):
+            value = getattr(self, name)
+            if value in _DEFAULT_SECRETS or len(value) < _MIN_SECRET_LENGTH:
+                problems.append(f"{name.upper()} must be a random value of at least {_MIN_SECRET_LENGTH} characters")
+        if not self.auth_cookie_secure:
+            problems.append("AUTH_COOKIE_SECURE must be true")
+        if problems:
+            raise ValueError("Unsafe production settings: " + "; ".join(problems))
+        return self
 
     @property
     def admin_email_list(self) -> set[str]:

@@ -6,7 +6,10 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
-from app.api.routes import admin, answers, auth, bots, conversations, domains, live, organizations, plans, sharing, sources, widget
+from app.api.routes import (
+    admin, answers, auth, bots, conversations, domains, live, memory, organizations, plans, saved_replies, sharing,
+    sources, widget,
+)
 from app.api.widget_cors import WidgetCORSMiddleware
 from app.core.config import get_settings
 from app.core.errors import NotFoundError, PingError
@@ -91,6 +94,8 @@ for router in (
     sharing.router,
     live.router,
     answers.router,
+    memory.router,
+    saved_replies.router,
 ):
     api.include_router(router, prefix=API_PREFIX)
 

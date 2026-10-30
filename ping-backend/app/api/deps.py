@@ -105,10 +105,21 @@ ReasonerDep = Annotated[Reasoner, Depends(get_reasoner)]
 
 
 def client_ip(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    """The visitor's IP, for rate limits. Behind `trusted_proxy_hops` proxies the
+    entry they appended to X-Forwarded-For; the entries to its left are written
+    by the client and would let anyone pick a fresh rate-limit key per request."""
+    peer = request.client.host if request.client else "unknown"
+    return forwarded_client(request.headers.get("x-forwarded-for"), peer, get_settings().trusted_proxy_hops)
+
+
+def forwarded_client(header: str | None, peer: str, hops: int) -> str:
+    if not header or hops <= 0:
+        return peer
+    entries = [e.strip() for e in header.split(",") if e.strip()]
+    if not entries:
+        return peer
+    # With one proxy, its own entry (the client it saw) is the last one.
+    return entries[-hops] if len(entries) >= hops else entries[0]
 
 
 def visitor_location(request: Request) -> str:

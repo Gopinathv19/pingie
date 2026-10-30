@@ -1,0 +1,14 @@
+[
+  {
+    "question": "How do I delete my account?",
+    "answer": "Go to Settings, then Account, and click Delete account. This removes all your bots and data."
+  },
+  {
+    "question": "Do you have a student discount?",
+    "answer": "Yes. Students get 50% off the Pro plan with a valid student email."
+  },
+  {
+    "question": "Can I get a refund on an annual plan after the first month?",
+    "answer": "Annual plans can be refunded within 30 days of payment. After that, the remaining months are not refunded."
+  }
+]

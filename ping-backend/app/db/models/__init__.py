@@ -11,7 +11,7 @@ from app.db.models.auth_user import AuthenticatedUser
 from app.db.models.bot import Bot
 from app.db.models.conversation import Conversation, Lead, Message, Visitor
 from app.db.models.domain import AllowedDomain
-from app.db.models.live import AgentPresence, BotAnswer
+from app.db.models.live import AgentPresence, BotAnswer, BotSavedReply
 from app.db.models.organization import Organization, OrganizationMember
 from app.db.models.plan import Plan
 from app.db.models.sharing import BotShare, Invitation
@@ -28,6 +28,7 @@ __all__ = [
     "Invitation",
     "AgentPresence",
     "BotAnswer",
+    "BotSavedReply",
     "Bot",
     "BotSource",
     "AllowedDomain",

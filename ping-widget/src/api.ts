@@ -1,4 +1,4 @@
-import type { BotReply, ConversationStarted, LiveUpdates, WidgetConfig } from "./types";
+import type { BotReply, ConversationStarted, HelpArticle, HelpArticleSummary, LiveUpdates, Score, WidgetConfig } from "./types";
 
 /** An HTTP error from ping-backend. `detail` and `code` come from its error body. */
 export class ApiError extends Error {
@@ -45,6 +45,30 @@ export class WidgetApi {
   /** Ask for a person. `waiting` when someone is online, else `unavailable`. */
   handoff(conversationId: string, token: string): Promise<{ status: "waiting" | "human" | "unavailable" }> {
     return this.request("POST", `/conversations/${conversationId}/handoff`, {}, token);
+  }
+
+  /** The visitor ended the chat; a new message later reopens it. */
+  end(conversationId: string, token: string): Promise<void> {
+    return this.request("POST", `/conversations/${conversationId}/end`, {}, token);
+  }
+
+  /** "How was your chat?" */
+  rate(conversationId: string, token: string, score: Score, comment: string, source: "end" | "closed" | "inline"): Promise<void> {
+    return this.request("POST", `/conversations/${conversationId}/rating`, { score, comment, source }, token);
+  }
+
+  /** Help Center articles, optionally searched. */
+  async help(q = ""): Promise<HelpArticleSummary[]> {
+    const r = await this.request<{ items: HelpArticleSummary[] }>("GET", `/help${q ? `?q=${encodeURIComponent(q)}` : ""}`);
+    return r.items;
+  }
+
+  article(id: string): Promise<HelpArticle> {
+    return this.request("GET", `/help/${encodeURIComponent(id)}`);
+  }
+
+  articleFeedback(id: string, helpful: boolean): Promise<void> {
+    return this.request("POST", `/help/${encodeURIComponent(id)}/feedback`, { helpful });
   }
 
   /** Agent and system messages newer than `after`, plus who is answering. */

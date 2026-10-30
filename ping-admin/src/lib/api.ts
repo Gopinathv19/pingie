@@ -22,6 +22,7 @@ export interface AdminOrg {
   members_limit: number;
   shares_limit: number;
   remove_branding: boolean;
+  custom_design: boolean;
   stripe_customer_id: string | null;
   created_at: string;
   status: string;
@@ -35,6 +36,7 @@ export interface OrgPlanUpdate {
   members_limit?: number;
   shares_limit?: number;
   remove_branding?: boolean;
+  custom_design?: boolean;
 }
 
 export type ModelTier = "fast" | "balanced" | "best";
@@ -51,6 +53,7 @@ export interface PlanValues {
   members_limit: number;
   shares_limit: number;
   remove_branding: boolean;
+  custom_design: boolean;
   model_tiers: ModelTier[];
   features: string[];
   is_public: boolean;

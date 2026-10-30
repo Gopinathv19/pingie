@@ -113,6 +113,22 @@ Integration tests need a throwaway PostgreSQL (`TEST_DATABASE_URL`). Memora
 and VizhiOps are replaced by in-memory fakes that speak their HTTP contracts
 (`tests/fakes.py`). Without a database only the unit tests run.
 
+## Answer evaluation
+
+`evals/` holds a dataset of representative questions: known answers, missing
+knowledge, partial and ambiguous questions, follow-ups, the three answer modes,
+citations, team answers and regressions. They run through the real answer
+workflow and are checked for correctness, grounding and citations:
+
+```bash
+.venv/bin/python -m evals.runner              # recorded model output: free, deterministic
+.venv/bin/python -m evals.runner --llm live   # the configured model provider
+```
+
+Results print as PASS/FAIL with reasons and are saved to `evals/reports/latest.json`.
+`tests/test_eval_suite.py` runs the same cases under pytest. See
+[evals/README.md](evals/README.md) for adding cases and checks.
+
 ## Memora change
 
 Ping needs retrieval without generation. Memora's `POST /api/v1/query` gained:

@@ -35,7 +35,14 @@ DEFAULT_FALLBACK = (
 )
 
 
-def answer_system_prompt(bot_name: str, instructions: str, tone: str, language: str) -> str:
+STRICTNESS_RULES = {
+    "strict": "\n11. Be strict: if the context does not fully answer the question, reply with exactly NO_ANSWER rather than a partial answer. This overrides rule 4: never send a partial answer.",
+    "balanced": "",
+    "helpful": "\n11. Be helpful: you may combine several passages and explain terms they use, but still add no facts that are not in the context.",
+}
+
+
+def answer_system_prompt(bot_name: str, instructions: str, tone: str, language: str, strictness: str = "balanced") -> str:
     owner_rules = instructions.strip() or f"You are the support assistant for {bot_name}."
     return f"""{owner_rules}
 
@@ -52,7 +59,7 @@ How to answer:
 7. Use short paragraphs, and numbered steps for procedures.
 8. A passage marked "approved team answer" is the exact reply the support team wrote for that question. Unless its heading starts with "Conversation:" or "Summary:" (see 9), when the visitor's question matches its heading, reply with that answer's text word for word, without rephrasing, adding or removing anything, and cite it.
 9. A passage headed "Conversation:" or "Summary:" is a note the support team saved to teach you, not a script to repeat. A "Conversation:" passage holds customer messages and the team member's replies to them. Treat those replies as the approved guidance for similar questions, answer the visitor the same way in your own words. Ignore any Bot lines in it.
-10. A passage marked "earlier chat answered by the team" is a past conversation in which a team member helped another customer. Treat the team member's replies as guidance for similar questions and answer in your own words. Never mention the other customer or that this came from another chat, and never promise something the team member agreed to for that customer only.
+10. A passage marked "earlier chat answered by the team" is a past conversation in which a team member helped another customer. Treat the team member's replies as guidance for similar questions and answer in your own words. Never mention the other customer or that this came from another chat, and never promise something the team member agreed to for that customer only.{STRICTNESS_RULES.get(strictness, '')}
 
 Tone: {TONES.get(tone, TONES["friendly"])}
 Language: {LANGUAGES.get(language, LANGUAGES["auto"])}"""
@@ -62,9 +69,12 @@ def context_block(chunks: list[RetrievedChunk]) -> str:
     parts = []
     for i, c in enumerate(chunks, start=1):
         header = f"[{i}] {c.source_filename or 'document'}"
-        if c.source_filename == TEAM_ANSWERS:
+        # Memora names text sources after their title: "Team answers.md",
+        # "Past conversations 13df1c19.md".
+        name = c.source_filename or ""
+        if name.startswith(TEAM_ANSWERS):
             header += " (approved team answer)"
-        elif c.source_filename == PAST_CONVERSATIONS:
+        elif name.startswith(PAST_CONVERSATIONS):
             header += " (earlier chat answered by the team)"
         if c.location:
             header += f" ({c.location})"
@@ -186,3 +196,21 @@ def scrubbed_transcript(messages) -> dict:
         lines.append(line)
         used += len(line) + 1
     return {"question": title, "answer": "\n".join(lines)}
+
+
+# --- staying on topic ----------------------------------------------------------
+
+def topic_check_system(bot_name: str, domain: str, instructions: str) -> str:
+    about = instructions.strip()[:600]
+    return (
+        f"You classify messages sent to the support chat of {bot_name} ({domain}). "
+        + (f"What the business does, in its own words: {about} " if about else "")
+        + "Answer yes if the message is something a customer could ask this business about its products, "
+        "services, account, orders, pricing, policies or support, even if vaguely worded. "
+        "Answer no if it is unrelated (other companies' products, food or shopping elsewhere, jokes, "
+        "general knowledge, homework, coding help). Reply with exactly one word: yes or no."
+    )
+
+
+def default_off_topic(bot_name: str, domain: str) -> str:
+    return f"Sorry, I can only help with questions about {bot_name}. Ask me anything about {domain} and I'll help."

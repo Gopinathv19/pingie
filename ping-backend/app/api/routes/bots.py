@@ -7,7 +7,7 @@ from app.schemas.appearance import WidgetAppearance
 from app.schemas.bot import BotDetail, BotUpdate
 from app.schemas.domain import InstallInfo
 from app.schemas.enums import TimeRange
-from app.services import analytics_service, bot_service, domain_service
+from app.services import alert_service, analytics_service, bot_service, domain_service
 
 router = APIRouter(prefix="/bots/{bot_id}", tags=["bots"])
 
@@ -21,6 +21,12 @@ def get_bot(access: ViewerAccess, db: DbSession):
 def update_bot(payload: BotUpdate, access: EditorAccess, db: DbSession):
     bot_service.update_bot(db, access.bot, payload)
     return bot_service.to_detail(db, access.bot, access.role, access.via)
+
+
+@router.post("/alerts/test")
+def test_alerts(bot: EditableBot):
+    """Post a test message to the saved alert URLs now; each URL's HTTP status (or error)."""
+    return {"results": alert_service.test(bot)}
 
 
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)

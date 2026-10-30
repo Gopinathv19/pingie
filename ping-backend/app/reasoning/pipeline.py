@@ -53,6 +53,7 @@ class BotProfile:
     collect_email: bool = True
     # Changes whenever the bot's knowledge changes; keys the caches. Empty = don't cache.
     knowledge_version: str = ""
+    strictness: str = "balanced"  # strict | balanced | helpful
 
 
 @dataclass
@@ -105,6 +106,7 @@ class Reply:
     model: str | None = None
     gateway_query_id: str | None = None
     first_token_ms: int | None = None
+    offer_human: bool = False  # show "Talk to a person" under this reply
 
 
 # --- small talk ---------------------------------------------------------------
@@ -132,11 +134,18 @@ def small_talk(message: str) -> str | None:
     return None
 
 
-_HUMAN_WORD = r"(human|person|people|agent|representative|operator|real person|live (agent|chat|person)|customer (care|support|service)|support (team|staff)|someone)"
+_HUMAN_WORD = (
+    r"(human|humans|person|people|agent|representative|rep|operator|staff|executive|team member|"
+    r"real person|live (agent|chat|person)|customer (care|support|service)|support (team|staff)|someone)"
+)
 _HUMAN_ASK = re.compile(
-    rf"\b((talk|speak|chat|connect|transfer|escalate)\b.{{0,25}}\b{_HUMAN_WORD}\b"
-    rf"|(need|want|get|give|call|contact)\b.{{0,15}}\b{_HUMAN_WORD}\b"
-    rf"|{_HUMAN_WORD}\b.{{0,12}}\b(please|plz|now|needed|required))",
+    rf"\b((talk|speak|chat|connect|transfer|escalate|put me through)\b.{{0,25}}\b{_HUMAN_WORD}\b"
+    # "alot me a human", "arrange a person", "assign an agent": typos included
+    rf"|(need|want|get|give|call|contact|allot|alot|allott?ed|allocate|arrange|assign|book|send|bring|provide)\b"
+    rf".{{0,15}}\b{_HUMAN_WORD}\b"
+    rf"|{_HUMAN_WORD}\b.{{0,12}}\b(please|plz|pls|now|needed|required)"
+    # the whole message is just "human" / "an agent please"
+    rf"|^\s*(an? )?{_HUMAN_WORD}\s*[.!?]*\s*$)",
     re.I,
 )
 
@@ -152,7 +161,16 @@ def wants_human(message: str) -> bool:
     return len(text.split()) <= 10 and bool(_HUMAN_ASK.search(text))
 
 
-def _kept(chunk: RetrievedChunk, floor: float, min_rerank: float) -> bool:
+# How far below "balanced" (settings.reasoning_min_rerank) a passage may score
+# and still count: strict keeps only clearly relevant ones, helpful a few more.
+_STRICTNESS_OFFSET = {"strict": 1.0, "balanced": 0.0, "helpful": -1.0}
+
+
+def rerank_floor_for(strictness: str) -> float:
+    return get_settings().reasoning_min_rerank + _STRICTNESS_OFFSET.get(strictness, 0.0)
+
+
+def is_evidence(chunk: RetrievedChunk, floor: float, min_rerank: float) -> bool:
     """Evidence if it clears the similarity floor and, when Memora reranked it, the rerank floor."""
     if chunk.similarity < floor:
         return False
@@ -241,8 +259,11 @@ class Reasoner:
                     temperature=0.0,
                     timeout=settings.reasoning_condense_timeout_seconds,
                 )
-                if result.content and len(result.content) < 600:
-                    standalone = result.content.strip().strip('"')
+                rewrite = (result.content or "").strip().strip('"')
+                if usable_rewrite(question, rewrite):
+                    standalone = rewrite
+                elif rewrite:
+                    trace["condense_rejected"] = rewrite[:200]
                 prepared.prompt_tokens += result.prompt_tokens
                 prepared.completion_tokens += result.completion_tokens
             except PingError as exc:
@@ -257,6 +278,8 @@ class Reasoner:
             bot.min_similarity if bot.min_similarity is not None else settings.reasoning_min_similarity
         )
         trace["threshold"] = floor
+        rerank_floor = rerank_floor_for(bot.strictness)
+        trace["rerank_floor"] = rerank_floor
         chunks: list[RetrievedChunk] = []
         if retrieved is not None:
             result = retrieved
@@ -275,13 +298,13 @@ class Reasoner:
                 "location": c.location,
                 "similarity": round(c.similarity, 4),
                 "rerank": c.rerank_score,
-                "kept": _kept(c, floor, settings.reasoning_min_rerank),
+                "kept": is_evidence(c, floor, rerank_floor),
             }
             for c in chunks
         ]
 
         # Ground: only passages above the floor count as evidence.
-        evidence = [c for c in chunks if _kept(c, floor, settings.reasoning_min_rerank)]
+        evidence = [c for c in chunks if is_evidence(c, floor, rerank_floor)]
         prepared.evidence = evidence
         prepared.trace = trace
         if not evidence:
@@ -290,7 +313,7 @@ class Reasoner:
             return prepared
 
         trace["route"] = "generate"
-        system = prompts.answer_system_prompt(bot.name, bot.instructions, bot.tone, bot.language)
+        system = prompts.answer_system_prompt(bot.name, bot.instructions, bot.tone, bot.language, bot.strictness)
         messages = [{"role": "system", "content": system}]
         for turn in recent:
             messages.append({"role": turn.role, "content": turn.content})
@@ -335,10 +358,13 @@ class Reasoner:
         best: dict[str, RetrievedChunk] = {}
         for c in [*first.chunks, *second.chunks]:
             cur = best.get(c.chunk_id)
-            if cur is None or (c.rerank_score or -99) > (cur.rerank_score or -99):
+            if cur is None or _rank(c) > _rank(cur):
                 best[c.chunk_id] = c
-        merged = sorted(best.values(), key=lambda c: c.rerank_score if c.rerank_score is not None else -99, reverse=True)
-        return RetrievalResult(chunks=merged[:top_k], trace={**first.trace, "also_raw_query": True})
+        merged = sorted(best.values(), key=_rank, reverse=True)
+        return RetrievalResult(
+            chunks=merged[:top_k],
+            trace={**first.trace, "also_raw_query": True, "raw_query_chunks": len(second.chunks)},
+        )
 
     # --- finishing --------------------------------------------------------------
 
@@ -395,10 +421,21 @@ class Reasoner:
                 **base,
             )
 
+        if filtered.outcome == "partial" and bot.strictness == "strict":
+            # Strict: a half answer is a fallback (prompt rule 11 asks for NO_ANSWER;
+            # this holds even when the model answers part anyway).
+            prepared.trace["route"] = "strict_partial"
+            return Reply(
+                text=self.fallback_text(bot),
+                outcome="fallback",
+                asks_for_email=bot.collect_email,
+                **base,
+            )
+
         return Reply(
             text=filtered.text,
             outcome=filtered.outcome,
-            citations=_citations(prepared.evidence, filtered.cited),
+            citations=_citations(prepared.evidence, filtered.cited, filtered.text),
             **base,
         )
 
@@ -409,6 +446,16 @@ class Reasoner:
         if bot.collect_email:
             return prompts.DEFAULT_FALLBACK
         return "I couldn't find that in our documentation."
+
+
+def usable_rewrite(question: str, rewrite: str) -> bool:
+    """Whether a condensed follow-up is a search query, not an answer or a
+    refusal the fast model wrote instead (then the raw words are searched)."""
+    if not rewrite or prompts.NO_ANSWER in rewrite:
+        return False
+    if len(rewrite) > 3 * len(question) + 150:
+        return False
+    return len(re.findall(r"[.!?](?:\s|$)", rewrite)) <= 2
 
 
 def _named(chunks: list[RetrievedChunk], names: Callable[[list[str]], dict[str, str]] | None) -> list[RetrievedChunk]:
@@ -423,13 +470,50 @@ def _named(chunks: list[RetrievedChunk], names: Callable[[list[str]], dict[str, 
     return [replace(c, source_filename=found.get(c.source_id) or c.source_filename) for c in chunks]
 
 
-def _citations(evidence: list[RetrievedChunk], cited: list[int]) -> list[Citation]:
+def _rank(c: RetrievedChunk) -> float:
+    """Rerank score for ordering; a passage without one sorts last (0.0 is a real score)."""
+    return c.rerank_score if c.rerank_score is not None else -99.0
+
+
+_WORD = re.compile(r"[a-z0-9]+")
+# Words that say nothing about which passage an answer came from.
+_FILLER = set(
+    "the and for are was were you your our with this that from have has can will not but all any its into "
+    "about there their them they then than when what which where who how also just more some such only "
+    "here very each other use used using get go see click".split()
+)
+
+
+def _content_words(text: str) -> set[str]:
+    return {w for w in _WORD.findall(text.lower()) if len(w) > 2 and w not in _FILLER}
+
+
+def _supporting(evidence: list[RetrievedChunk], answer: str) -> list[RetrievedChunk]:
+    """For an answer that cited nothing: the passage it visibly drew on, if any.
+
+    Overlap of content words between the answer and each passage. Citing the
+    top search result blindly can point at a document the answer didn't use;
+    with no clear support, no citation is better than a wrong one."""
+    said = _content_words(answer)
+    if not said:
+        return []
+    best, best_shared = None, 0
+    for c in evidence:
+        shared = len(said & _content_words(c.content))
+        if shared > best_shared:
+            best, best_shared = c, shared
+    if best is None or best_shared < 3 or best_shared < 0.2 * len(said):
+        return []
+    return [best]
+
+
+def _citations(evidence: list[RetrievedChunk], cited: list[int], answer: str = "") -> list[Citation]:
     """The passages the model cited, deduplicated by document and location.
 
-    A model that answered without citing anything still used the evidence it
-    was given; the best passage is cited so the visitor can check the claim.
+    When the model cited nothing usable, the passage the answer visibly drew
+    on is cited instead (see `_supporting`), or nothing.
     """
-    picked = [evidence[i - 1] for i in cited if 1 <= i <= len(evidence)] or evidence[:1]
+    picked = [evidence[i - 1] for i in cited if 1 <= i <= len(evidence)] or _supporting(evidence, answer)
     seen: set[tuple[str, str]] = set()
     out: list[Citation] = []
     for c in picked:
